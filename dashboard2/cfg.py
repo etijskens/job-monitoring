@@ -7,7 +7,7 @@ class Cfg:
     # configuration parameters
     #   todo: document these static variables
     effic_threshold = 70        # a percentage
-    sampling_interval= 3*60    # seconds
+    sampling_interval= 1*60    # seconds
     correct_effic   = True 
     # When jobs create processes on other nodes which are
     #   NOT under the control of Torque, showq does not know the loads on these 

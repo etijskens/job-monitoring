@@ -21,8 +21,8 @@ def run_showq():
     Runs ``showq -r -p hopper --xml`` on a login node,
     parse its xml output, discard everything but the job entries 
     convert the job entries from a list of OrderedDicts to a list of ShowqJobEntries,
-    remove the job entries . Job entries whose mhost 
-    is unknown and worker job entries are removed
+    remove the job entries whose mhost is unknown 
+    remove worker job entries
     """
     data_showq = run_remote("showq -r -p hopper --xml" )
     job_entries = data_showq['Data']['queue']['job']
@@ -141,11 +141,12 @@ class JobSample:
         self.warnings = []
         self.overview = ''
         self.details  = ''
-        for rule in Cfg.the_rules:
-            msg = rule.check(self)
-            if msg:
-                self.warnings.append(msg)
-                self.parent_job.warning_counts[rule] += 1
+        if not self.data_qstat.is_interactive_job(): #interactive jobs are ignored
+            for rule in Cfg.the_rules:
+                msg = rule.check(self)
+                if msg:
+                    self.warnings.append(msg)
+                    self.parent_job.warning_counts[rule] += 1
         
         if self.warnings:
             self.parent_job.nsamples_with_warnings += 1
@@ -331,7 +332,7 @@ class Sampler:
             n_ok = 0
             n_ok_stop = 1
             n_notok = 0 
-            n_notok_stop = 1
+            n_notok_stop = 2
             print('testing: n_ok_stop={}, n_notok_stop={}'.format(n_ok_stop,n_notok_stop)) 
         for i_entry,job_entry in enumerate(job_entries):
             if job_entry.get_state() != 'Running':

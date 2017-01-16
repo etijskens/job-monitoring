@@ -1,8 +1,21 @@
 
 # all_procs = -1000
 
-cluster_properties = {'hopper':{'ncores_per_node': 20
-                               ,'login_node'     :'login.hpc.uantwerpen.be'
+def hopper_mem_avail_gb(node):
+    r = node[1]
+    if r!='5':
+        return 58
+    c = node[3]
+    if not c in '123':
+        return 58
+    cn = node[7]
+    if not cn in '12345678':
+        return 58
+    return 256 # r5c[1-3]cn0[1-8]
+    
+cluster_properties = {'hopper':{'ncores_per_node' : 20
+                               ,'login_node'      :'login.hpc.uantwerpen.be'
+                               ,'mem_avail_gb'    : hopper_mem_avail_gb
                                }
                      }
 current_cluster = list(cluster_properties.keys())[0]
@@ -60,4 +73,16 @@ if __name__=="__main__":
     assert str2gb('1024MB')==1
     assert str2gb('1048576kb')==1
     
+    node_fmt = 'r5c{}cn0{}'
+    for c in range(1,4):
+        for cn in range(1,9):
+            node = node_fmt.format(c,cn)
+            assert hopper_mem_avail_gb(node)==256
+            
+    node_fmt = 'r6c{}cn0{}'
+    for c in range(1,4):
+        for cn in range(1,9):
+            node = node_fmt.format(c,cn)
+            assert hopper_mem_avail_gb(node)==58
+
     print('\n--finished--')

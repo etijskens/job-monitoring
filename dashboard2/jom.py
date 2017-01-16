@@ -10,13 +10,19 @@ class Dashboard(QtGui.QMainWindow):
     """
     """
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,verbose=False,beep=True):
+    def __init__(self,verbose=False
+                     ,beep   =True
+                     ,test__ =False
+                     ):
         """"""
         super(Dashboard, self).__init__()
         self.ui = uic.loadUi('../dashboard2/mainwindow.ui',self)
         self.setWindowTitle('Job monitor')
         self.verbose = verbose
-        self.beep = beep
+        self.beep    = beep
+        self.test__  = test__
+
+        self.ignore_on_qwOverview_cursorPositionChanged = False
 
         font = QtGui.QFont()
         font.setFamily('Monaco')
@@ -37,18 +43,28 @@ class Dashboard(QtGui.QMainWindow):
     def sample(self):
         """"""
         self.previous_block = 0
-        self.sampler.sample(test__=False)
+        self.sampler.sample(test__=self.test__)
         timestamp = self.sampler.timestamp() 
-        self.show_overview(timestamp)
-        self.ui.qwDetailsJobid   .setText('')
-        self.ui.qwDetailsNSamples.setText('')
         if self.beep:
             print(bell)
+        
+        self.previous_jobid = self.ui.qwDetailsJobid.text() 
+        if self.previous_jobid:
+            # if the job is still reported in the overview, update the qwDetailsNSamples QLabel
+            text = self.ui.qwDetailsNSamples.text()
+            words = text.split('/')
+            words[1] = str(int(words[1])+1)
+            text = '/ '.join(words)
+            self.ui.qwDetailsNSamples.setText(text)
+        else:
+            self.ui.qwDetailsJobid   .setText('')
+            self.ui.qwDetailsNSamples.setText('')
+        self.show_overview(timestamp)
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self,timestamp):
         """"""
         self.ui.qwOverviewTimestamp.setText(timestamp)
-        text = self.sampler.overviews[timestamp]
+        text = self.sampler.overviews[timestamp] 
         self.ui.qwOverview.setPlainText( text )
         i = 1+self.sampler.timestamps.index(timestamp)
         n = self.sampler.nsamples()
@@ -80,25 +96,43 @@ class Dashboard(QtGui.QMainWindow):
     def on_qwOverview_cursorPositionChanged(self):
         """"""
         cursor = self.ui.qwOverview.textCursor()
-        current_block = cursor.blockNumber()
-        if self.previous_block < current_block: 
-            move_op = QtGui.QTextCursor.Down
-        elif self.previous_block > current_block:
-            move_op = QtGui.QTextCursor.Up
-        cursor.select(QtGui.QTextCursor.LineUnderCursor)
-        selection = cursor.selectedText()
-        while selection.startswith(' '):
-            cursor.movePosition(move_op)
-            current_block = cursor.blockNumber()
+        if self.previous_jobid:
+            previous_block = cursor.blockNumber()
             cursor.select(QtGui.QTextCursor.LineUnderCursor)
-            selection = cursor.selectedText()    
-        self.ui.qwOverview.setTextCursor(cursor)
-        self.previous_block = current_block
-        jobid = selection.split(' ',1)[0]
-        if jobid=='Jobs':
-            jobid = ''        
-        timestamp = self.qwOverviewTimestamp.text()
-        self.show_details(jobid,timestamp)
+            selection = cursor.selectedText()
+            while not selection.startswith(self.previous_jobid):
+                cursor.movePosition(QtGui.QTextCursor.Down)
+                current_block = cursor.blockNumber()
+                print('oops',current_block)   
+                if previous_block==current_block:
+                    break # we've reached the end
+                previous_block = current_block
+                cursor.select(QtGui.QTextCursor.LineUnderCursor)
+                selection = cursor.selectedText()
+            self.ui.qwOverview.setTextCursor(cursor)
+            current_block = cursor.blockNumber()
+            self.previous_block = current_block
+            self.previous_jobid = ''
+        else:    
+            current_block = cursor.blockNumber()
+            if self.previous_block < current_block: 
+                move_op = QtGui.QTextCursor.Down
+            elif self.previous_block > current_block:
+                move_op = QtGui.QTextCursor.Up
+            cursor.select(QtGui.QTextCursor.LineUnderCursor)
+            selection = cursor.selectedText()
+            while selection.startswith(' '):
+                cursor.movePosition(move_op)
+                current_block = cursor.blockNumber()
+                cursor.select(QtGui.QTextCursor.LineUnderCursor)
+                selection = cursor.selectedText()    
+            self.ui.qwOverview.setTextCursor(cursor)
+            self.previous_block = current_block
+            jobid = selection.split(' ',1)[0]
+            if jobid=='Jobs':
+                jobid = ''        
+            timestamp = self.qwOverviewTimestamp.text()
+            self.show_details(jobid,timestamp)
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewFirst_pressed(self):
         print('on_qwOverviewFirst_pressed')
@@ -192,11 +226,12 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser('job-monitor')
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--no-beep',action='store_true')
+    parser.add_argument('--test__' ,action='store_true')
     args = parser.parse_args()
-    print(args)
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep
-                          ) 
+                         ,test__  =     args.test__
+                         )
     dashboard.show()
     
     sys.exit(app.exec_())

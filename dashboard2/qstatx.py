@@ -152,6 +152,14 @@ class Data_qstat:
             self.node_sar[compute_node] = data_sar                
     #---------------------------------------------------------------------------        
 
+    def is_interactive_job(self):
+        try:
+            s = self.data['submit_args']
+            tf = '-I' in s
+            return tf
+        except:
+            return False
+        
 ################################################################################
 # test code below
 ################################################################################
