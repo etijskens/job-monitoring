@@ -2,12 +2,21 @@ from PyQt4 import QtGui,QtCore,uic
 import sys
 from showq import Sampler
 from cfg import Cfg
+from constants import bell
+import argparse
 
+#===================================================================================================
 class Dashboard(QtGui.QMainWindow):
-    def __init__(self):
+    """
+    """
+    #---------------------------------------------------------------------------------------------------------         
+    def __init__(self,verbose=False,beep=True):
+        """"""
         super(Dashboard, self).__init__()
         self.ui = uic.loadUi('../dashboard2/mainwindow.ui',self)
         self.setWindowTitle('Job monitor')
+        self.verbose = verbose
+        self.beep = beep
 
         font = QtGui.QFont()
         font.setFamily('Monaco')
@@ -26,23 +35,30 @@ class Dashboard(QtGui.QMainWindow):
         self.timer.start()
     #---------------------------------------------------------------------------------------------------------         
     def sample(self):
+        """"""
         self.previous_block = 0
         self.sampler.sample(test__=False)
         timestamp = self.sampler.timestamp() 
         self.show_overview(timestamp)
         self.ui.qwDetailsJobid   .setText('')
         self.ui.qwDetailsNSamples.setText('')
+        if self.beep:
+            print(bell)
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self,timestamp):
+        """"""
         self.ui.qwOverviewTimestamp.setText(timestamp)
         text = self.sampler.overviews[timestamp]
         self.ui.qwOverview.setPlainText( text )
         i = 1+self.sampler.timestamps.index(timestamp)
         n = self.sampler.nsamples()
         text = '{} / {} '.format(i,n)
+        if self.verbose:
+            print(text)
         self.ui.qwOverviewNSamples.setText(text)
     #---------------------------------------------------------------------------------------------------------         
     def show_details(self,jobid,timestamp):
+        """"""
         if jobid=='':
             self.ui.qwDetailsTimestamp.setText('')
             self.ui.qwDetails         .setPlainText('')
@@ -56,6 +72,8 @@ class Dashboard(QtGui.QMainWindow):
             n = len(timestamps)
             i = 1+timestamps.index(timestamp)
             text = '{} / {} '.format(i,n)
+            if self.verbose:
+                print(text)
             self.ui.qwDetailsNSamples.setText(text)        
 
     #---------------------------------------------------------------------------------------------------------         
@@ -107,6 +125,11 @@ class Dashboard(QtGui.QMainWindow):
         self.move_overview(index=-1)
     #---------------------------------------------------------------------------------------------------------
     def move_overview(self,index=None,delta=None):
+        """
+        navigate to an overview:
+            in an absolute index specified by <index>
+            in a relative way: current index + <delta> 
+        """
         i = index
         if delta:
             timestamp = self.ui.qwOverviewTimestamp.text()
@@ -163,9 +186,17 @@ class Dashboard(QtGui.QMainWindow):
         
 
 if __name__=='__main__':
+
     app = QtGui.QApplication(sys.argv)
     
-    dashboard = Dashboard()
+    parser = argparse.ArgumentParser('job-monitor')
+    parser.add_argument('--verbose',action='store_true')
+    parser.add_argument('--no-beep',action='store_true')
+    args = parser.parse_args()
+    print(args)
+    dashboard = Dashboard(verbose =     args.verbose
+                         ,beep    = not args.no_beep
+                          ) 
     dashboard.show()
     
     sys.exit(app.exec_())
