@@ -1,0 +1,20 @@
+# ignore these directories:
+RemoteSystemsTempFiles/
+dashboard/
+jommeke/
+pyqt4/
+.metadata/
+
+# ignore all pdfs except document.pdf
+vsc-all-hands-2017-02/*.pdf
+!vsc-all-hands-2017-02/document.pdf
+vsc-all-hands-2017-02/*.gz
+vsc-all-hands-2017-02/tmp/
+vsc-all-hands-2017-02/.project
+vsc-all-hands-2017-02/.texlipse
+
+dashboard2/.project
+dashboard2/.pydevproject
+dashboard2/testje.*
+dashboard2/__pycache__
+dashboard2/*.xml

@@ -1,0 +1,243 @@
+%% LaTeX Beamer presentation template (requires beamer package)
+%% see http://bitbucket.org/rivanvx/beamer/wiki/Home
+%% idea contributed by H. Turgut Uyar
+%% template based on a template by Till Tantau
+%% this template is still evolving - it might differ in future releases!
+
+\documentclass[aspectratio=1610]{beamer}
+
+\definecolor{vscOrange}   {HTML}{FFA800}
+\definecolor{vscTeal}     {HTML}{004C5F}
+\definecolor{vscBlueGreen}{HTML}{049FC5}
+\definecolor{vscLightGray}{HTML}{E8E8E8}
+\definecolor{vscDarkGray} {HTML}{494949}
+
+\definecolor{uaAubergine} {HTML}{7B0F2D}
+\definecolor{uaBlue}      {HTML}{003A57}
+
+\mode<presentation>
+{
+\usetheme{metropolis}
+\setbeamercovered{transparent}
+}
+%redefine colors of metropolis theme
+\definecolor{mDarkTeal}{HTML}{004C5F}
+\definecolor{mLightBrown}{HTML}{FFA800}
+
+\setbeamercolor{frametitle}{fg=vscOrange,bg=vscTeal}
+
+\usepackage[english]{babel}
+\usepackage[latin1]{inputenc}
+
+% font definitions, try \usepackage{ae} instead of the following
+% three lines if you don't like this look
+\usepackage{mathptmx}
+\usepackage[scaled=.90]{helvet}
+\usepackage{courier}
+
+\usepackage[T1]{fontenc}
+
+\title{Job performance monitoring}
+\subtitle{from a user support perspective}}
+
+
+% - Use the \inst{?} command only if the authors have different
+%   affiliation.
+%\author{F.~Author\inst{1} \and S.~Another\inst{2}}
+\author{Bert Tijskens}
+
+% - Use the \inst command only if there are several affiliations.
+% - Keep it simple, no one is interested in your street address.
+\institute
+{
+%\inst{1}%
+CalcUA - University of Antwerp \\
+%\hfill \\
+\includegraphics[height=1cm]{logo-ua.png}\hspace*{4cm}~\includegraphics[height=1.5cm]{logo-vsc.png}
+}
+
+\date{VSC all hands meeting 21-2-2017}
+
+% Delete this, if you do not want the table of contents to pop up at
+% the beginning of each subsection:
+% \AtBeginSubsection[]
+% {
+% \begin{frame}<beamer>
+% \frametitle{Outline}
+% \tableofcontents[currentsection,currentsubsection]
+% \end{frame}
+% }
+
+% If you wish to uncover everything in a step-wise fashion, uncomment
+% the following command:
+
+%\beamerdefaultoverlayspecification{<+->}
+
+\begin{document}
+
+\begin{frame}
+  \maketitle
+\end{frame}
+
+\begin{frame}
+  \frametitle{Outline}
+  \tableofcontents
+  % You might wish to add the option [pausesections]
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}
+  \frametitle{Why monitor job performance?}
+  
+  \begin{itemize}
+    \item Detect inefficent jobs asap.
+  	  \begin{itemize}
+  	    \item jobs with unused cores and memory (simultaneously) 
+  	    \item jobs with low core loads
+  	    \item \ldots
+	  \end{itemize}
+	\pause
+    \item Optimize throughput on our clusters (it's HPC, not LPC).
+    \pause
+    \item Take opportunity to educate users.
+    \item Take opportunity to learn something.
+    \pause 
+    \item There is profit for everyone. 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Constraints}
+  
+  \begin{itemize}
+    \item Low overhead.
+    \item Stay out of the way of efficiently running jobs.\\
+    \hfill\\
+    \pause
+    \item Get as much information out of Moab as possible.
+    \item Only touch the nodes of a job if it is suspicious.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{How monitor job performance?}
+  
+  \begin{itemize}
+    \item Which parameters indicate pathological cases?
+    \pause
+    \item Tools?
+    \pause
+    \item Manual inspection?
+    \pause
+      \begin{itemize}
+        \item Which jobs need inspection?
+        \begin{itemize}
+          \item Large jobs
+          \item Large amount of jobs submitted by same user
+        \end{itemize}
+      \end{itemize}
+    \pause
+    \item Automated inspection?
+      \begin{itemize}
+        \item Frequency  
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Resource usage}
+  \begin{enumerate} 
+    \item Cores
+    \pause
+    \item Memory
+    \begin{itemize}
+      \item Swapping?
+    \end{itemize}
+    \pause
+    \item IO
+    \begin{itemize}
+      \item \$VSC\_SCRATCH, \$VSC\_DATA, \$VSC\_HOME
+    \end{itemize}
+    \pause
+    \item Communication
+  \end{enumerate}
+\end{frame}
+
+\section{Manual inspection}
+\begin{frame}
+  \frametitle{Manual inspection}
+  \begin{itemize}
+    \item inspect \texttt{showq} output
+    \item \alert{inspect scheduler}
+    \item \texttt{ssh} to compute node and 
+    \item run \texttt{(h)top}
+    \begin{itemize}
+      \item cpu usage and memory usage per core and per node
+      \item running processes
+    \end{itemize}
+    \item run \texttt{sar}\\
+    \begin{tabular}{l l l}
+      \texttt{sar -u [s] [n] }     & cpu usage &(per node) \\
+      \texttt{sar -P ALL [s] [n] } & cpu usage &(per core, all cores) \\
+      \texttt{sar -r [s] [n] }     & memory usage &(per node) \\
+      \texttt{sar -S [s] [n] }     & swap space used &(per node) \\
+      \texttt{sar -b [s] [n] }     & I/O activity &(per node) 
+    \end{tabular}
+    \item Many other tools available \textcolor{vscBlueGreen}{
+    \url{http://www.thegeekstuff.com/2011/12/linux-performance-monitoring-tools/}}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Custom metrics}
+  \begin{itemize}
+    \item Identify pathological cases at a glance \ldots 
+    \item used cores/total cores
+    \item 
+  \end{itemize}
+\end{frame}
+\section{Reading material}
+\begin{frame}
+  \frametitle{Reading material}
+  \begin{itemize}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.deonsworld.co.za/2012/12/20/understanding-and-using-htop-monitor-system-resources/}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.thegeekstuff.com/2011/03/sar-examples}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.thegeekstuff.com/2011/12/linux-performance-monitoring-tools/}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.admin-magazine.com/HPC/Articles/HPC-Monitoring-What-Should-You-Monitor}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.admin-magazine.com/HPC/Articles/Processor-and-Memory-Metrics}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.admin-magazine.com/HPC/Articles/Process-Network-and-Disk-Metrics}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.admin-magazine.com/HPC/Articles/Determining-CPU-Utilization}}
+    \item
+    \textcolor{vscBlueGreen}{\url{http://www.admin-magazine.com/HPC/Articles/Gathering-Data-on-Environment-Modules}}
+  \end{itemize}
+\end{frame}
+
+\section*{Summary}
+
+\begin{frame}
+  \frametitle<presentation>{Summary}
+  
+  \begin{itemize}
+    \item The \alert{first main message} of your talk in one or two lines.
+  \end{itemize}
+  
+  % The following outlook is optional.
+  \vskip0pt plus.5fill
+  \begin{itemize}
+    \item Outlook
+    \begin{itemize}
+      \item Something you haven't solved.
+      \item Something else you haven't solved.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\end{document}
