@@ -47,8 +47,9 @@ class CoresInUseRule(Rule):
         nnodes = job_sample.data_qstat.get_nnodes()
         if  nnodes > 1:
             return ''
-        
-        mem_available = 58 #on the thin nodes at least
+        gb_per_node = cluster_properties[current_cluster]['mem_avail_gb']
+        mhost = job_sample.data_qstat.get_master_node()
+        mem_available = gb_per_node(mhost)
         mem_requested = job_sample.data_qstat.get_mem_requested()
         if mem_requested==0:
             mem_requested = job_sample.data_qstat.get_mem_used()
