@@ -218,7 +218,6 @@ class Dashboard(QtGui.QMainWindow):
         self.show_details(jobid,timestamp)
     #---------------------------------------------------------------------------------------------------------
         
-
 if __name__=='__main__':
 
     app = QtGui.QApplication(sys.argv)
@@ -227,7 +226,10 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--no-beep',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
+    parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
+    print(args)
+    Cfg.sampling_interval = args.interval
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep
                          ,test__  =     args.test__
