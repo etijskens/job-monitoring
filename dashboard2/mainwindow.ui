@@ -42,12 +42,25 @@
        <widget class="QLabel" name="label">
         <property name="minimumSize">
          <size>
-          <width>120</width>
+          <width>100</width>
           <height>0</height>
          </size>
         </property>
         <property name="text">
          <string> Job overview</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
@@ -196,12 +209,37 @@
        <widget class="QLabel" name="qwJobDetails_2">
         <property name="minimumSize">
          <size>
-          <width>120</width>
+          <width>90</width>
           <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
          </size>
         </property>
         <property name="text">
          <string> Job details</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="qwMail">
+        <property name="minimumSize">
+         <size>
+          <width>60</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>mail</string>
         </property>
        </widget>
       </item>

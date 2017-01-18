@@ -4,6 +4,8 @@ dashboard/
 jommeke/
 pyqt4/
 .metadata/
+completed/
+config/
 
 # ignore all pdfs except document.pdf
 vsc-all-hands-2017-02/*.pdf

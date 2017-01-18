@@ -11,6 +11,8 @@ from rules import EfficiencyThresholdRule
 import datetime
 from _collections import OrderedDict
 from listdict import ListDict
+import pickle
+from os import makedirs
 
 # list of users we want to ignore for the time being...
 ignore_users = []
@@ -233,8 +235,9 @@ class Job:
         """
         """
         assert isinstance(job_entry,ShowqJobEntry)
-        self.jobid = job_entry.get_jobid()
-        self.mhost = job_entry.get_mhost()
+        self.jobid    = job_entry.get_jobid()
+        self.username = job_entry.get_username()
+        self.mhost    = job_entry.get_mhost()
     
         self.neighbouring_jobs = neighbouring_jobs # list of jobs on the mhost        
         
@@ -269,9 +272,9 @@ class Job:
     def nsamples(self):
         return len(self.samples)
     #---------------------------------------------------------------------------
-    def is_finished(self,current_timestamp):
-        tf = self.last_timestamp < current_timestamp
-        return tf
+#     def is_finished(self,current_timestamp):
+#         tf = self.last_timestamp < current_timestamp
+#         return tf
     #---------------------------------------------------------------------------
     def check_for_issues(self,timestamp):
         sample = self.samples[timestamp] 
@@ -305,7 +308,7 @@ class Sampler:
         self.jobs    = {}               # {jobid    :Job object  }
         self.timestamps = []         # [datetime.strftime(timestamp_format)]
         self.timestamp_jobs = ListDict()# {timestamp:[jobids]}
-    
+        self.jobids_running_previous = []
     #---------------------------------------------------------------------------    
     def sample(self,test__=False):
         """
@@ -318,12 +321,35 @@ class Sampler:
             dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
             
         # create a dict { mhost : [jobid] } with all the jobs running on node mhost 
+        # and a list wit all uncompleted jobids
+        # the latter is compared to the jobid list of the previous sample to find
+        # out which jobs are finished.
         self.mhost_jobs = ListDict()
+        self.jobids_running = []
         for job_entry in job_entries:
             mhost = job_entry.get_mhost()
             jobid = job_entry.get_jobid()
             self.mhost_jobs.add(mhost,jobid)
-
+            self.jobids_running.append(jobid)
+            try:
+                self.jobids_running_previous.remove(jobid)
+            except ValueError:
+                pass
+            #   when this loop has completed, self.jobids_running_previous 
+            #   contains only jobides of finished jobs.
+        jobids_finished = self.jobids_running_previous
+        self.jobids_running_previous = self.jobids_running # prepare for next sample() call
+        # pickle finished jobs and remove them from self.jobs
+        makedirs('completed', exist_ok=True)
+        for jobid in jobids_finished:
+            try:
+                job = self.jobs.pop(jobid)
+                with open('completed/{}.pickled'.format(jobid),'wb') as f:
+                    pickle.dump(job,f)
+                print('pickled', jobid)
+            except KeyError:
+                continue
+            
         timestamp = datetime.datetime.now().strftime(timestamp_format)
 
         progress_message_fmt = 'Sampling #{} : {} {}/{}'

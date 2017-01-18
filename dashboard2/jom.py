@@ -4,6 +4,7 @@ from showq import Sampler
 from cfg import Cfg
 from constants import bell
 import argparse
+from mail import address_of
 
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
@@ -21,6 +22,8 @@ class Dashboard(QtGui.QMainWindow):
         self.verbose = verbose
         self.beep    = beep
         self.test__  = test__
+        self.username= ''
+        self.ignore_signal = False
 
         self.ignore_on_qwOverview_cursorPositionChanged = False
 
@@ -70,7 +73,7 @@ class Dashboard(QtGui.QMainWindow):
         n = self.sampler.nsamples()
         text = '{} / {} '.format(i,n)
         if self.verbose:
-            print(text)
+            print('show_overview',text)
         self.ui.qwOverviewNSamples.setText(text)
     #---------------------------------------------------------------------------------------------------------         
     def show_details(self,jobid,timestamp):
@@ -78,23 +81,27 @@ class Dashboard(QtGui.QMainWindow):
         if jobid=='':
             self.ui.qwDetailsTimestamp.setText('')
             self.ui.qwDetails         .setPlainText('')
+            self.username = ''
         else:
             self.ui.qwDetailsTimestamp.setText(timestamp)
             self.ui.qwDetailsJobid.setText(jobid)
             job = self.sampler.jobs[jobid]
-            details = job.get_details(timestamp)
+            self.username = job.username
+            details = address_of(self.username)+job.get_details(timestamp)
             self.ui.qwDetails.setPlainText(details)
             timestamps = job.timestamps()
             n = len(timestamps)
             i = 1+timestamps.index(timestamp)
             text = '{} / {} '.format(i,n)
             if self.verbose:
-                print(text)
+                print('show_details',jobid,text)
             self.ui.qwDetailsNSamples.setText(text)        
-
+            
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
         """"""
+        # TODO: this function is execute many times when a job is selected in the overview. 
+        #       This is probably not necessary.
         cursor = self.ui.qwOverview.textCursor()
         if self.previous_jobid:
             previous_block = cursor.blockNumber()
@@ -103,7 +110,6 @@ class Dashboard(QtGui.QMainWindow):
             while not selection.startswith(self.previous_jobid):
                 cursor.movePosition(QtGui.QTextCursor.Down)
                 current_block = cursor.blockNumber()
-                print('oops',current_block)   
                 if previous_block==current_block:
                     break # we've reached the end
                 previous_block = current_block
@@ -217,7 +223,16 @@ class Dashboard(QtGui.QMainWindow):
         timestamp = timestamps[i]
         self.show_details(jobid,timestamp)
     #---------------------------------------------------------------------------------------------------------
-        
+    def on_qwMail_pressed(self):
+        """
+        copy the email address of the user of the current job to the clipboard
+        """
+        address = address_of(self.username) 
+        print(address)
+        clipboard = QtGui.qApp.clipboard()
+        clipboard.setText(address)
+    #---------------------------------------------------------------------------------------------------------
+
 if __name__=='__main__':
 
     app = QtGui.QApplication(sys.argv)

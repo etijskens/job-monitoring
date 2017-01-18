@@ -70,3 +70,8 @@ def run_remote( command, connection=the_connection ):
         lines = sout.split('\n')
         return lines
 
+def copy_local_to_remote(local_path,remote_path, connection=the_connection):
+    sftp = connection.paramiko_client.open_sftp()
+    sftp.put(local_path, remote_path)
+    sftp.close()
+    
