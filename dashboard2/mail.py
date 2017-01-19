@@ -10,8 +10,11 @@ def address_of(username):
     global the_mail_adresses
     if not the_mail_adresses:
         the_mail_adresses = retrieve_mail_addresses()
-    return the_mail_adresses[username]
-
+    try:
+        address = the_mail_adresses[username]
+    except KeyError:
+        address = '(mail address unknown)'
+    return address
 #===================================================================================================
 def retrieve_mail_addresses(refresh=False):
     """
