@@ -1,3 +1,6 @@
+"""
+Main program for job monitoring of running jobs
+"""
 from PyQt4 import QtGui,QtCore,uic
 import sys
 from showq import Sampler
@@ -17,15 +20,12 @@ class Dashboard(QtGui.QMainWindow):
                      ):
         """"""
         super(Dashboard, self).__init__()
-        self.ui = uic.loadUi('../dashboard2/mainwindow.ui',self)
-        self.setWindowTitle('Job monitor')
+        self.ui = uic.loadUi('dashboard.ui',self)
+        self.setWindowTitle('Job monitor - RUNNING jobs')
         self.verbose = verbose
         self.beep    = beep
         self.test__  = test__
         self.username= ''
-        self.ignore_signal = False
-
-        self.ignore_on_qwOverview_cursorPositionChanged = False
 
         font = QtGui.QFont()
         font.setFamily('Monaco')

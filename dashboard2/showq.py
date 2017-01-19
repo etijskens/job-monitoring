@@ -13,6 +13,7 @@ from _collections import OrderedDict
 from listdict import ListDict
 import pickle
 from os import makedirs
+from timestamp import get_timestamp
 
 # list of users we want to ignore for the time being...
 ignore_users = []
@@ -293,8 +294,6 @@ class Job:
         details = self.samples[timestamp].compose_details()
         return details
 #===============================================================================   
-timestamp_format = '%Y-%m-%d %H:%M' 
-#===============================================================================   
 class Sampler:
     #---------------------------------------------------------------------------    
     def __init__(self,interval=None,qMainWindow=None):
@@ -339,18 +338,20 @@ class Sampler:
             #   contains only jobides of finished jobs.
         jobids_finished = self.jobids_running_previous
         self.jobids_running_previous = self.jobids_running # prepare for next sample() call
-        # pickle finished jobs and remove them from self.jobs
+        # pickle finished jobs (if they had issues) and remove them from self.jobs
         makedirs('completed', exist_ok=True)
         for jobid in jobids_finished:
             try:
                 job = self.jobs.pop(jobid)
-                with open('completed/{}.pickled'.format(jobid),'wb') as f:
-                    pickle.dump(job,f)
-                print('pickled', jobid)
+                if job.nsamples_with_warnings:
+                    fname = 'completed/{}_{}_{}.pickled'.format(job.username,jobid,job.timestamps()[-1])
+                    with open(fname,'wb') as f:
+                        pickle.dump(job,f)
+                    print('pickled', jobid)
             except KeyError:
                 continue
             
-        timestamp = datetime.datetime.now().strftime(timestamp_format)
+        timestamp = get_timestamp()
 
         progress_message_fmt = 'Sampling #{} : {} {}/{}'
         overview = [] # one warning per job with issues, jobs without issues are skipped
