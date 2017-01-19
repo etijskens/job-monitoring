@@ -85,7 +85,10 @@ class Data_qstat:
         """
         Returns the remaining walltime as 'hh:mm:ss'
         """
-        value = int(self.data['Walltime']['Remaining'])
+        try:
+            value = int(self.data['Walltime']['Remaining'])
+        except KeyError:
+            return '?'
         if not fmt:
             return value 
         hours = value//3600

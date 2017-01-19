@@ -1,14 +1,16 @@
 """
 Main program for job monitoring of finished jobss
 """
-from PyQt4 import QtGui,QtCore,uic
+from PyQt4 import QtGui,uic
 import sys
 import argparse
 from _collections import OrderedDict
-# from mail import address_of
 import glob
-from ignoresignals import IgnoreSignals
+from _pickle import load
 
+from mail import address_of
+from ignoresignals import IgnoreSignals
+# from showq import Job
 #===================================================================================================
 def completed_jobs_by_user(arg):
     """
@@ -28,6 +30,34 @@ def completed_jobs_by_time(arg):
     """
     return arg.split('_',3)[2]#.split('.',1)[0]
 #===================================================================================================
+class JobHistory:
+    """"""
+    #---------------------------------------------------------------------------------------------------------         
+    def __init__(self,job):
+        self.job = job
+        self.timestamp_begin = []
+        line = 1
+        try:
+            self.address = self.job.address
+        except:
+            self.address = address_of(self.job.username)
+        text = self.address
+        for i,timestamp in enumerate(self.job.timestamps()):
+            text += '\n### '+timestamp+' '+(59*'#')
+            self.timestamp_begin.append(line)
+            timestamp_details = job.get_details(timestamp)+'\n'
+            if i>0: # remove the script, it already appears in the first sample.
+                pos = timestamp_details.find('*** Script')
+                if pos > -1:
+                    timestamp_details = timestamp_details[:pos]
+            line += timestamp_details.count('\n') + 1
+            text += timestamp_details
+        text += '\n'+80*'#'
+        self.details = text
+        self.current_timestamp = 0
+    #---------------------------------------------------------------------------------------------------------         
+
+#===================================================================================================
 class Finished(QtGui.QMainWindow):
     """
     """
@@ -42,6 +72,7 @@ class Finished(QtGui.QMainWindow):
         self.verbose = verbose
         self.test__  = test__
         self.ignore_signals = False
+        self.current_job = None
         
         font = QtGui.QFont()
         font.setFamily('Monaco')
@@ -100,52 +131,41 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self):
         """"""
-        text = '\n'.join(self.fnames)
+        text = '\n'
+        text+= '\n'.join(self.fnames)
         self.ui.qwOverview.setPlainText(text)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
         """"""
         if self.ignore_signals:
-            print('ignored')
+#             print('ignored')
             return
-        
-        print('on_qwOverview_cursorPositionChanged')
-        # TODO: this function is execute many times when a job is selected in the overview. 
-        #       This is probably not necessary.
+#         print('on_qwOverview_cursorPositionChanged')
         cursor = self.ui.qwOverview.textCursor()
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
-        selection = cursor.selectedText()
+        pickled = cursor.selectedText()
         with IgnoreSignals(self):
             self.ui.qwOverview.setTextCursor(cursor)
-        jobid = selection.split('_')[1]
-        print('selected:',jobid)
-#         self.show_details(jobid,timestamp)
+        print('selected:',pickled)
+        self.show_details(pickled)
     #---------------------------------------------------------------------------------------------------------         
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------             
-    def show_details(self,jobid,timestamp):
+    def show_details(self,fname):
         """"""
-        if jobid=='':
-            self.ui.qwDetailsTimestamp.setText('')
-            self.ui.qwDetails         .setPlainText('')
-            self.username = ''
-        else:
-            self.ui.qwDetailsTimestamp.setText(timestamp)
-            self.ui.qwDetailsJobid.setText(jobid)
-            job = self.sampler.jobs[jobid]
-            self.username = job.username
-            details = address_of(self.username)+job.get_details(timestamp)
-            self.ui.qwDetails.setPlainText(details)
-            timestamps = job.timestamps()
-            n = len(timestamps)
-            i = 1+timestamps.index(timestamp)
-            text = '{} / {} '.format(i,n)
-            if self.verbose:
-                print('show_details',jobid,text)
-            self.ui.qwDetailsNSamples.setText(text)        
-            
-    #---------------------------------------------------------------------------------------------------------
-    # qwDetails handling
+        if fname:
+            jobh = self.map_fname_job[fname]
+            if jobh is None:
+                file = open(fname,'rb')
+                jobh = JobHistory(load(file))    
+                self.map_fname_job[fname] = jobh
+            else:
+                jobh.current_timestamp = 0
+            self.ui.qwDetailsJobid.setText(jobh.job.username+' '+jobh.job.jobid)
+            self.ui.qwDetails.setPlainText(jobh.details)
+            self.current_job = jobh # used by move_details
+            self.ui.qwDetailsNSamples.setText('{} / {}'.format(1,jobh.job.nsamples()))
+            self.ui.qwDetailsTimestamp.setText(jobh.job.timestamps()[0])
     #---------------------------------------------------------------------------------------------------------
     def on_qwDetailsFirst_pressed(self):
         print('on_qwDetailsFirst_pressed')
@@ -173,26 +193,36 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def move_details(self,index=None,delta=None):
         i = index
-        jobid = self.ui.qwDetailsJobid.text()
-        job = self.sampler.jobs[jobid]
-        timestamps = job.timestamps()
-        n = len(timestamps)
         if delta:
-            timestamp = self.ui.qwDetailsTimestamp.text()
-            i = timestamps.index(timestamp)
+            i = self.current_job.current_timestamp + delta
             # make sure index i is in the valid range.
-            i += delta
             i = max(0,i)
-            last = n-1
-            i = min(i,last)
-        timestamp = timestamps[i]
-        self.show_details(jobid,timestamp)
+            i = min(i,self.current_job.job.nsamples()-1)
+        self.current_job.current_timestamp = i
+        self.ui.qwDetailsNSamples.setText('{} / {}'.format(i,self.current_job.job.nsamples()))
+        self.ui.qwDetailsTimestamp.setText(self.current_job.job.timestamps()[i])
+        line = self.current_job.timestamp_begin[i]
+        cursor = self.ui.qwDetails.textCursor()
+        current_block = cursor.blockNumber()
+        nlines_to_move = line - current_block
+        if nlines_to_move > 0:
+            moveop = QtGui.QTextCursor.Down
+        elif nlines_to_move < 0:
+            nlines_to_move = -nlines_to_move
+            moveop = QtGui.QTextCursor.Up
+        else:
+            moveop = QtGui.QTextCursor.NoMove
+        cursor.movePosition(moveop,n=nlines_to_move)
+        cursor.select(QtGui.QTextCursor.LineUnderCursor)
+        self.ui.qwDetails.setTextCursor(cursor)
+
     #---------------------------------------------------------------------------------------------------------
     def on_qwMail_pressed(self):
         """
         copy the email address of the user of the current job to the clipboard
         """
-        address = address_of(self.username) 
+        if self.current_job is None:
+            return
         print(address)
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)

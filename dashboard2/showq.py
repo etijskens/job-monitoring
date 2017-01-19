@@ -222,10 +222,10 @@ class JobSample:
             for node, data_sar in self.data_qstat.node_sar.items():
                 for line in data_sar.data_cores:
                     self.details += node+' '+line +'\n'
-        self.details += '*** Script *****************'+stars+'\n'
+        self.details += '*** Script ***************************'+stars+'\n'
         for line in self.parent_job.jobscript.clean:
             self.details += line+'\n'
-        self.details += '****************************'+stars
+        self.details += '**************************************'+stars
             
         return self.details
         
@@ -239,6 +239,7 @@ class Job:
         self.jobid    = job_entry.get_jobid()
         self.username = job_entry.get_username()
         self.mhost    = job_entry.get_mhost()
+        self.address  = None
     
         self.neighbouring_jobs = neighbouring_jobs # list of jobs on the mhost        
         

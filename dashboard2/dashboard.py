@@ -89,7 +89,8 @@ class Dashboard(QtGui.QMainWindow):
             self.ui.qwDetailsJobid.setText(jobid)
             job = self.sampler.jobs[jobid]
             self.username = job.username
-            details = address_of(self.username)+job.get_details(timestamp)
+            job.address = address_of(job.username)
+            details = job.address+job.get_details(timestamp)
             self.ui.qwDetails.setPlainText(details)
             timestamps = job.timestamps()
             n = len(timestamps)
@@ -147,6 +148,7 @@ class Dashboard(QtGui.QMainWindow):
                 jobid = ''        
             timestamp = self.qwOverviewTimestamp.text()
             self.show_details(jobid,timestamp)
+        print('selected:',jobid)
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewFirst_pressed(self):
         print('on_qwOverviewFirst_pressed')
