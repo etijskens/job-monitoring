@@ -7,6 +7,7 @@ import argparse
 from _collections import OrderedDict
 # from mail import address_of
 import glob
+from ignoresignals import IgnoreSignals
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -40,6 +41,7 @@ class Finished(QtGui.QMainWindow):
         self.setWindowTitle('Job monitor - FINISHED jobs')
         self.verbose = verbose
         self.test__  = test__
+        self.ignore_signals = False
         
         font = QtGui.QFont()
         font.setFamily('Monaco')
@@ -47,8 +49,6 @@ class Finished(QtGui.QMainWindow):
         self.ui.qwOverview.setFont(font)
         self.ui.qwDetails .setFont(font)
         
-        self.previous_block = 0
-                    
         self.get_file_list()
         
         self.show()
@@ -87,7 +87,6 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def sort_overview(self):
         print('sort_overview')
-        # TODO: 
         if self.ui.qwOverviewUser.isChecked():
             sort_key = completed_jobs_by_user
         elif self.ui.qwOverviewJobid.isChecked():
@@ -104,6 +103,26 @@ class Finished(QtGui.QMainWindow):
         text = '\n'.join(self.fnames)
         self.ui.qwOverview.setPlainText(text)
     #---------------------------------------------------------------------------------------------------------         
+    def on_qwOverview_cursorPositionChanged(self):
+        """"""
+        if self.ignore_signals:
+            print('ignored')
+            return
+        
+        print('on_qwOverview_cursorPositionChanged')
+        # TODO: this function is execute many times when a job is selected in the overview. 
+        #       This is probably not necessary.
+        cursor = self.ui.qwOverview.textCursor()
+        cursor.select(QtGui.QTextCursor.LineUnderCursor)
+        selection = cursor.selectedText()
+        with IgnoreSignals(self):
+            self.ui.qwOverview.setTextCursor(cursor)
+        jobid = selection.split('_')[1]
+        print('selected:',jobid)
+#         self.show_details(jobid,timestamp)
+    #---------------------------------------------------------------------------------------------------------         
+    # qwDetails handling
+    #---------------------------------------------------------------------------------------------------------             
     def show_details(self,jobid,timestamp):
         """"""
         if jobid=='':
@@ -125,32 +144,6 @@ class Finished(QtGui.QMainWindow):
                 print('show_details',jobid,text)
             self.ui.qwDetailsNSamples.setText(text)        
             
-    #---------------------------------------------------------------------------------------------------------         
-    def on_qwOverview_cursorPositionChanged(self):
-        """"""
-        print('on_qwOverview_cursorPositionChanged')
-        # TODO: this function is execute many times when a job is selected in the overview. 
-        #       This is probably not necessary.
-#         cursor = self.ui.qwOverview.textCursor()
-#         current_block = cursor.blockNumber()
-#         if self.previous_block < current_block: 
-#             move_op = QtGui.QTextCursor.Down
-#         elif self.previous_block > current_block:
-#             move_op = QtGui.QTextCursor.Up
-#         cursor.select(QtGui.QTextCursor.LineUnderCursor)
-#         selection = cursor.selectedText()
-#         while selection.startswith(' '):
-#             cursor.movePosition(move_op)
-#             current_block = cursor.blockNumber()
-#             cursor.select(QtGui.QTextCursor.LineUnderCursor)
-#             selection = cursor.selectedText()    
-#         self.ui.qwOverview.setTextCursor(cursor)
-#         self.previous_block = current_block
-#         jobid = selection.split(' ',1)[0]
-#         if jobid=='Jobs':
-#             jobid = ''        
-#         timestamp = self.qwOverviewTimestamp.text()
-#         self.show_details(jobid,timestamp)
     #---------------------------------------------------------------------------------------------------------
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------
