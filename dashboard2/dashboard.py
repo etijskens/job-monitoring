@@ -8,6 +8,7 @@ from cfg import Cfg
 from constants import bell
 import argparse
 from mail import address_of
+from ignoresignals import IgnoreSignals
 
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
@@ -26,6 +27,7 @@ class Dashboard(QtGui.QMainWindow):
         self.beep    = beep
         self.test__  = test__
         self.username= ''
+        self.ignore_signals = False
 
         font = QtGui.QFont()
         font.setFamily('Monaco')
@@ -102,6 +104,10 @@ class Dashboard(QtGui.QMainWindow):
         """"""
         # TODO: this function is execute many times when a job is selected in the overview. 
         #       This is probably not necessary.
+        if self.ignore_signals:
+#             print('ignored')
+            return
+
         cursor = self.ui.qwOverview.textCursor()
         if self.previous_jobid:
             previous_block = cursor.blockNumber()
@@ -115,7 +121,8 @@ class Dashboard(QtGui.QMainWindow):
                 previous_block = current_block
                 cursor.select(QtGui.QTextCursor.LineUnderCursor)
                 selection = cursor.selectedText()
-            self.ui.qwOverview.setTextCursor(cursor)
+            with IgnoreSignals(self):
+                self.ui.qwOverview.setTextCursor(cursor)
             current_block = cursor.blockNumber()
             self.previous_block = current_block
             self.previous_jobid = ''
@@ -132,7 +139,8 @@ class Dashboard(QtGui.QMainWindow):
                 current_block = cursor.blockNumber()
                 cursor.select(QtGui.QTextCursor.LineUnderCursor)
                 selection = cursor.selectedText()    
-            self.ui.qwOverview.setTextCursor(cursor)
+            with IgnoreSignals(self):
+                self.ui.qwOverview.setTextCursor(cursor)
             self.previous_block = current_block
             jobid = selection.split(' ',1)[0]
             if jobid=='Jobs':
