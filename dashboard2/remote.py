@@ -66,7 +66,7 @@ def run_remote( command, connection=the_connection ):
         command = shlex.split(command)
         proc = subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         if 'ssh' in command:
-            timeout = 30
+            timeout = 60
         else:
             timeout = 5
         try:

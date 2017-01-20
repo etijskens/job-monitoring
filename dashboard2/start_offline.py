@@ -18,6 +18,7 @@ if __name__=="__main__":
         print(file)
     print('\n--files copied--')
     exit(0)
+    
     command = 'cd data/jobmonitor; module load hopper/2016a; module load Python; echo $$ > ojm.pid; date > ojm.log; python --version 2>&1 >> ojm.log; python ojm.py 2>&1 >> ojm.log'
     lines = remote.run_remote(command)
     for line in lines:

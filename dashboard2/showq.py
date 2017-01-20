@@ -12,7 +12,7 @@ import datetime
 from _collections import OrderedDict
 from listdict import ListDict
 import pickle
-from os import makedirs
+from os import makedirs,remove
 from timestamp import get_timestamp
 
 # list of users we want to ignore for the time being...
@@ -294,6 +294,26 @@ class Job:
             timestamp = self.timestamps()[-1]
         details = self.samples[timestamp].compose_details()
         return details
+    #---------------------------------------------------------------------------
+    def pickle(self,prefix,only_if_warnings=True):
+        if (only_if_warnings and self.nsamples_with_warnings) \
+        or (not only_if_warnings): 
+            if prefix=='running':
+                fname = '{}/{}_{}.pickled'   .format(prefix,self.username,self.jobid)
+            else:
+                fname = '{}/{}_{}_{}.pickled'.format(prefix,self.username,self.jobid,self.timestamps()[-1])
+            with open(fname,'wb') as f:
+                pickle.dump(self,f)
+            print(' (pickled {})'.format(fname))
+    #---------------------------------------------------------------------------
+    def remove_file(self):
+        fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
+        try:
+            remove(fname)
+        except:
+            print('failed to remove',fname)
+    #---------------------------------------------------------------------------
+    
 #===============================================================================   
 class Sampler:
     #---------------------------------------------------------------------------    
@@ -319,6 +339,9 @@ class Sampler:
         if self.qMainWindow:
             from PyQt4.QtGui import QProgressDialog,QApplication
             dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
+        else:
+            from progress import printProgress
+            hdr = 'sampling #{}'.format(len(self.timestamp_jobs)+1)
             
         # create a dict { mhost : [jobid] } with all the jobs running on node mhost 
         # and a list wit all uncompleted jobids
@@ -344,17 +367,16 @@ class Sampler:
         for jobid in jobids_finished:
             try:
                 job = self.jobs.pop(jobid)
-                if job.nsamples_with_warnings:
-                    fname = 'completed/{}_{}_{}.pickled'.format(job.username,jobid,job.timestamps()[-1])
-                    with open(fname,'wb') as f:
-                        pickle.dump(job,f)
-                    print('pickled', jobid)
             except KeyError:
                 continue
-            
+            job.pickle('completed')
+            if Cfg.offline:
+                job.remove_file()
         timestamp = get_timestamp()
+        makedirs ('running',exist_ok=True)
+        with open('running/timestamp','w') as f:
+            f.write(timestamp)
 
-        progress_message_fmt = 'Sampling #{} : {} {}/{}'
         overview = [] # one warning per job with issues, jobs without issues are skipped
         if test__:
             n_ok = 0
@@ -368,10 +390,10 @@ class Sampler:
             jobid = job_entry.get_jobid()
             self.timestamp_jobs.add(timestamp,jobid)
                         
-            progress_message = progress_message_fmt.format(len(self.timestamp_jobs),jobid,i_entry,self.n_entries)
             if self.qMainWindow is None:
-                print(progress_message)
+                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
             else:
+                progress_message = 'Sampling #{} : {} {}/{}'.format(len(self.timestamp_jobs),jobid,i_entry,self.n_entries)
                 dlg.setLabelText(progress_message)
                 dlg.setValue(i_entry)
                 QApplication.processEvents()
@@ -393,6 +415,8 @@ class Sampler:
                 if verbose:
                     print('\n'+timestamp+'\n')
                     print(job.get_details(timestamp))
+                if Cfg.offline:
+                    job.pickle('running')
             
             if test__:
                 if overview_line:
@@ -403,6 +427,7 @@ class Sampler:
                     break
         
         if self.qMainWindow is None:
+            printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
             for line in overview:
                 print(line,end='')
         else:
