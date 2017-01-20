@@ -13,7 +13,7 @@ def run_qstat_f(jobid):
     :str jobid:  job id. 
     """
     try:
-        result = run_remote("qstat --xml -f "+jobid)
+        result = run_remote("qstat -x -f "+jobid)
         # the '--xml' is replaced with '-x' (qstat only understands '-x'
         # the '--xml' is used to trigger the parsing of the xml output.
     except Exception as e:

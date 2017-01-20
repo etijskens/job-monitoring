@@ -1,6 +1,4 @@
-
-# all_procs = -1000
-
+#===============================================================================    
 def hopper_mem_avail_gb(node):
     r = node[1]
     if r!='5':
@@ -12,13 +10,23 @@ def hopper_mem_avail_gb(node):
     if not cn in '12345678':
         return 58
     return 256 # r5c[1-3]cn0[1-8]
-    
+#===============================================================================    
 cluster_properties = {'hopper':{'ncores_per_node' : 20
                                ,'login_node'      :'login.hpc.uantwerpen.be'
+                               ,'login_nodes'     :['login1-hopper.uantwerpen.be'
+                                                   ,'login2-hopper.uantwerpen.be'
+                                                   ,'login3-hopper.uantwerpen.be'
+                                                   ,'login4-hopper.uantwerpen.be']
                                ,'mem_avail_gb'    : hopper_mem_avail_gb
                                }
                      }
+#===============================================================================    
 current_cluster = list(cluster_properties.keys())[0]
+#===============================================================================    
+def fix_login_node(i):
+    assert i in range(1,5)
+    cluster_properties[current_cluster]['login_node'] = cluster_properties[current_cluster]['login_nodes'][i] 
+#===============================================================================    
 
 dashed_line = 80*'-'
 
@@ -40,6 +48,7 @@ magenta = '\033[35m'
 white   = '\033[37m'
 default = '\033[39m'
 
+#===============================================================================    
 def str2gb(s):
     """
     s = 'NN...NNuu'  
@@ -57,7 +66,6 @@ def str2gb(s):
     else:
         raise ValueError('Unknown unit: '+s)
     return value
-
 
 ################################################################################
 # test code below

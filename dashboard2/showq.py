@@ -310,7 +310,7 @@ class Sampler:
         self.timestamp_jobs = ListDict()# {timestamp:[jobids]}
         self.jobids_running_previous = []
     #---------------------------------------------------------------------------    
-    def sample(self,test__=False):
+    def sample(self,verbose=False,test__=False):
         """
         """
         job_entries = run_showq()
@@ -390,6 +390,9 @@ class Sampler:
             overview_line = job.check_for_issues(timestamp)
             if overview_line:
                 overview.append(overview_line)
+                if verbose:
+                    print('\n'+timestamp+'\n')
+                    print(job.get_details(timestamp))
             
             if test__:
                 if overview_line:

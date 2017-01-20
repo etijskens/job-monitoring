@@ -26,4 +26,6 @@ class Cfg:
                 , rules.TooManyWarningsRule()
                 , rules.NoModulesRule()
                 ]
-        
+    
+    offline = False
+    #   if True we ar running the offline job monitor on a login node.

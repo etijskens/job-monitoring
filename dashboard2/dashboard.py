@@ -18,6 +18,7 @@ class Dashboard(QtGui.QMainWindow):
     def __init__(self,verbose=False
                      ,beep   =True
                      ,test__ =False
+                     ,offline=False
                      ):
         """"""
         super(Dashboard, self).__init__()
@@ -26,6 +27,7 @@ class Dashboard(QtGui.QMainWindow):
         self.verbose = verbose
         self.beep    = beep
         self.test__  = test__
+        self.offline = offline
         self.username= ''
         self.ignore_signals = False
 
