@@ -26,7 +26,6 @@ if __name__=="__main__":
         timestamp = sampler.sample(verbose=verbose)
         stopped = not os.path.exists('ojm.running')
         minutes_to_sleep = int(Cfg.sampling_interval/60)
-        minutes_to_sleep = 1
         print()
         for m in range(minutes_to_sleep+1):
             printProgress( m, minutes_to_sleep, prefix = 'Sleeping: ', suffix='minutes', decimals=-1)

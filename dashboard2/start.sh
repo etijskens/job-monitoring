@@ -1,3 +1,6 @@
+#!/bin/bash
+# (to keep it running after you quit your session) execute this script as 
+#   > nohup ./start.sh &
 module purge
 module load hopper/2016a
 module load Python
