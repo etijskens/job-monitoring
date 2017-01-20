@@ -14,6 +14,7 @@ from listdict import ListDict
 import pickle
 from os import makedirs,remove
 from timestamp import get_timestamp
+from titleline import title_line
 
 # list of users we want to ignore for the time being...
 ignore_users = []
@@ -216,16 +217,15 @@ class JobSample:
         self.details += '\nother jobs on {}: '.format(self.showq_job_entry.get_mhost())
         self.details += str(self.parent_job.neighbouring_jobs) 
         self.details += '\n'
-        stars = 40*'*'
         if self.data_qstat.node_sar:
-            self.details += '*** sar -P ALL 1 1 ***'+stars+'\n'
+            self.details += title_line('sar -P ALL 1 1',width=100)
             for node, data_sar in self.data_qstat.node_sar.items():
                 for line in data_sar.data_cores:
                     self.details += node+' '+line +'\n'
-        self.details += '*** Script ***************************'+stars+'\n'
+        self.details += title_line('Script',width=100) 
         for line in self.parent_job.jobscript.clean:
             self.details += line+'\n'
-        self.details += '**************************************'+stars
+        self.details += title_line(width=100)
             
         return self.details
         
@@ -373,10 +373,12 @@ class Sampler:
             if Cfg.offline:
                 job.remove_file()
         timestamp = get_timestamp()
-        makedirs ('running',exist_ok=True)
-        with open('running/timestamp','w') as f:
-            f.write(timestamp)
-
+        if Cfg.offline:
+            makedirs ('running',exist_ok=True)
+            with open('running/timestamp','w') as f:
+                f.write(timestamp)
+            print(title_line(timestamp, width=100, above=True, below=True),end='')
+            
         overview = [] # one warning per job with issues, jobs without issues are skipped
         if test__:
             n_ok = 0
@@ -430,6 +432,7 @@ class Sampler:
             printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
             for line in overview:
                 print(line,end='')
+            print()
         else:
             dlg.setValue(self.n_entries)
             QApplication.processEvents()

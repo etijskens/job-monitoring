@@ -2,10 +2,11 @@
 RemoteSystemsTempFiles/
 dashboard/
 dashboard2/.settings/
+dashboard2/completed/
+dashboard2/running/
 jommeke/
 pyqt4/
 .metadata/
-completed/
 progress/
 config/
 

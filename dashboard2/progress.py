@@ -7,7 +7,9 @@ from time import time
 from _datetime import datetime
 
 
+#==================================================================================================
 # Print iterations progress
+#==================================================================================================
 def printProgress(iteration, total, prefix = 'Progress: ', suffix = '', decimals = 1, barLength = 50):
     """
     Call in a loop to create terminal progress bar
