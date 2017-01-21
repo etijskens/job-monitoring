@@ -1,15 +1,19 @@
 """
 Main program for job monitoring of running jobs
 """
-from PyQt4 import QtGui,QtCore,uic
-import sys
 from showq import Sampler
 from cfg import Cfg
 from constants import bell
-import argparse
 from mail import address_of
 from ignoresignals import IgnoreSignals
+import remote
 
+from PyQt4 import QtGui,QtCore,uic
+import sys
+import argparse
+import os
+from shutil import rmtree
+import pickle
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
     """
@@ -27,7 +31,7 @@ class Dashboard(QtGui.QMainWindow):
         self.verbose = verbose
         self.beep    = beep
         self.test__  = test__
-        self.offline = offline
+        self.analyze_offline_data = offline
         self.username= ''
         self.ignore_signals = False
 
@@ -50,7 +54,10 @@ class Dashboard(QtGui.QMainWindow):
     def sample(self):
         """"""
         self.previous_block = 0
-        self.sampler.sample(test__=self.test__)
+        if self.analyze_offline_data:
+            self.sampler.sample_offline()
+        else:
+            self.sampler.sample(test__=self.test__)
         timestamp = self.sampler.timestamp() 
         if self.beep:
             print(bell)
@@ -253,6 +260,7 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--no-beep',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
+    parser.add_argument('--offline',action='store_true')
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
     print(args)
@@ -260,6 +268,7 @@ if __name__=='__main__':
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep
                          ,test__  =     args.test__
+                         ,offline =     args.offline
                          )
     dashboard.show()
     

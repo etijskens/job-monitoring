@@ -4,6 +4,7 @@ dashboard/
 dashboard2/.settings/
 dashboard2/completed/
 dashboard2/running/
+dashboard2/offline/
 jommeke/
 pyqt4/
 .metadata/

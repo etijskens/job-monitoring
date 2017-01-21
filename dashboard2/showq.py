@@ -1,21 +1,18 @@
-from remote import run_remote
+import remote
 from cpus   import cpu_list
 from script import Data_jobscript
 from cfg import Cfg
 
 from constants import cluster_properties, current_cluster
-
 from qstatx import Data_qstat
 from rules import EfficiencyThresholdRule
-
-import datetime
-from _collections import OrderedDict
-from listdict import ListDict
-import pickle
-from os import makedirs,remove
 from timestamp import get_timestamp
 from titleline import title_line
+from listdict import ListDict
 
+from _collections import OrderedDict
+import pickle,os,datetime,shutil
+from time import sleep
 # list of users we want to ignore for the time being...
 ignore_users = []
 
@@ -28,7 +25,7 @@ def run_showq():
     remove the job entries whose mhost is unknown 
     remove worker job entries
     """
-    data_showq = run_remote("showq -r -p hopper --xml" )
+    data_showq = remote.run_remote("showq -r -p hopper --xml" )
     job_entries = data_showq['Data']['queue']['job']
     # remove jobs
     #  . which have no mhost set
@@ -248,7 +245,7 @@ class Job:
         for rule in Cfg.the_rules:
             self.warning_counts[rule] = 0
             
-        self.samples = OrderedDict() #{datetime:JobSamnple object}
+        self.samples = OrderedDict() #{timestamp:JobSamnple object}
         self.first_timestamp = timestamp
         self.last_timestamp  = None
         self.jobscript       = None
@@ -309,7 +306,7 @@ class Job:
     def remove_file(self):
         fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
         try:
-            remove(fname)
+            os.remove(fname)
         except:
             print('failed to remove',fname)
     #---------------------------------------------------------------------------
@@ -363,7 +360,7 @@ class Sampler:
         jobids_finished = self.jobids_running_previous
         self.jobids_running_previous = self.jobids_running # prepare for next sample() call
         # pickle finished jobs (if they had issues) and remove them from self.jobs
-        makedirs('completed', exist_ok=True)
+        os.makedirs('completed', exist_ok=True)
         for jobid in jobids_finished:
             try:
                 job = self.jobs.pop(jobid)
@@ -374,9 +371,9 @@ class Sampler:
                 job.remove_file()
         timestamp = get_timestamp()
         if Cfg.offline:
-            makedirs ('running',exist_ok=True)
-            with open('running/timestamp','w') as f:
-                f.write(timestamp)
+            os.makedirs ('running',exist_ok=True)
+            os.remove('running/timestamp') 
+            #   if ths file is absent ojm is sampling. 
             print(title_line(timestamp, width=100, above=True, below=True),end='')
             
         overview = [] # one warning per job with issues, jobs without issues are skipped
@@ -428,6 +425,11 @@ class Sampler:
                 if n_ok >= n_ok_stop and n_notok >= n_notok_stop:
                     break
         
+        if Cfg.offline:
+            # notify that sampling has finished.. 
+            with open('running/timestamp','w') as f:
+                f.write(timestamp)
+
         if self.qMainWindow is None:
             printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
             for line in overview:
@@ -442,7 +444,50 @@ class Sampler:
         self.timestamps.append(timestamp)
         #    this must be the last statement because the gui otherwise sees a timestamp which is not ready.
         return timestamp
-    
+    #---------------------------------------------------------------------------
+    def get_remote_timestamp(self):
+        """
+        returns the last sample's timestamp. If ojm.py is in the process of sampling
+        returns an empty string. 
+        """
+        try:
+            lines = remote.run_remote('cd data/jobmonitor/running/; cat timestamp')
+            return lines[0]
+        except:
+            return ''
+    #---------------------------------------------------------------------------
+    def sample_offline(self):
+        shutil.rmtree('offline')
+        os.makedirs('offline/running'  ,exist_ok=True)
+        #os.makedirs('offline/completed',exist_ok=True)
+        timestamp = self.get_remote_timestamp()
+        while not timestamp:
+            sleep(60)
+            timestamp = self.get_remote_timestamp()
+        if self.timestamps:
+            if timestamp==self.timestamps[-1]:
+                return # this timestamp is already in the samples
+        self.timestamps.append(timestamp)
+        filenames = remote.run_remote('cd data/jobmonitor/running/; ls *.pickled')
+        self.n_entries = 0
+        for filename in filenames:
+            if not filename: # empty line
+                continue
+            lfname =         'offline/running/'+filename
+            rfname = 'data/jobmonitor/running/'+filename
+            print('copying '+rfname,'to',lfname,end='')
+            try:
+                remote.copy_remote_to_local(lfname,rfname)
+                print(' - copied')
+            except:
+                print(' - failed')
+                continue
+            job = pickle.load(open('offline/running/'+filename,'rb'))
+            self.add_offline_job(job)
+            self.n_entries += 1
+
+        self.overviews[timestamp] = self.overview_list2str(self.overviews[timestamp])
+
     #---------------------------------------------------------------------------
     def timestamp(self,i=-1):
         return self.timestamps[i]
@@ -457,7 +502,38 @@ class Sampler:
     #---------------------------------------------------------------------------
     def nsamples(self):
         return len(self.timestamps)
-    #---------------------------------------------------------------------------    
+    #---------------------------------------------------------------------------
+    def add_offline_job(self,job):
+        """
+        Add an offline monitored job to the sampler
+        
+        self.jobs    = {}                # {jobid    :Job object  }
+        self.timestamps = []             # [timestamp]
+        self.timestamp_jobs = ListDict() # {timestamp:[jobids]}
+        self.overviews = OrderedDict()   # {timestamp:job_overview}
+        """
+        self.jobs[job.jobid] = job
+        for timestamp,job_sample in job.samples.items():
+            self.timestamp_jobs.add(timestamp, job.jobid)
+            overview_line = job_sample.compose_overview()
+            if not timestamp in self.overviews:
+                self.overviews[timestamp] = [overview_line]
+            else:
+                overview = self.overviews[timestamp] 
+                if isinstance(overview,str):
+                    lines = overview.split('\n')
+                    self.overviews[timestamp] = []
+                    overview = self.overviews[timestamp]
+                    for line in lines:
+                        if not line.endswith('\n'):
+                            line += '\n'
+                        overview.append(line)
+                overview.append(overview_line)                
+    #---------------------------------------------------------------------------
+    def when_done_adding_offline_jobs(self):
+        self.timestamps.sort()
+        for timestamp,jobid_list in self.timestamp_jobs:
+            jobid_list.sort()
     #---------------------------------------------------------------------------    
     
 ################################################################################
