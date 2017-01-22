@@ -372,7 +372,8 @@ class Sampler:
         timestamp = get_timestamp()
         if Cfg.offline:
             os.makedirs ('running',exist_ok=True)
-            os.remove('running/timestamp') 
+            if os.path.exists('running/timestamp'):
+                os.remove('running/timestamp') 
             #   if ths file is absent ojm is sampling. 
             print(title_line(timestamp, width=100, above=True, below=True),end='')
             
