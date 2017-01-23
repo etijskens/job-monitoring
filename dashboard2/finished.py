@@ -15,19 +15,19 @@ def completed_jobs_by_user(arg):
     """
     sort key for sorting finished jobs by username
     """
-    return arg.split('_',1)[0]
+    return arg.split(' ',1)[0].split('_',1)[0]
 #===================================================================================================
 def completed_jobs_by_jobid(arg):
     """
     sort key for sorting finished jobs by jobid
     """
-    return arg.split('_',2)[1]
+    return arg.split(' ',1)[0].split('_',2)[1]
 #===================================================================================================
 def completed_jobs_by_time(arg):
     """
     sort key for sorting finished jobs by username
     """
-    return arg.split('_',3)[2]#.split('.',1)[0]
+    return arg.split(' ',1)[0].split('_',3)[2]#.split('.',1)[0]
 #===================================================================================================
 class JobHistory:
     """"""
@@ -67,7 +67,7 @@ class Finished(QtGui.QMainWindow):
                      ):
         """"""
         super(Finished, self).__init__()
-        self.ui = uic.loadUi('finished3.ui',self)
+        self.ui = uic.loadUi('finished.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
         self.setWindowTitle('Job monitor - FINISHED jobs')
         self.verbose = verbose
@@ -91,34 +91,37 @@ class Finished(QtGui.QMainWindow):
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
     def get_file_list(self):
-        self.map_fname_job  = OrderedDict()
+        self.map_filename_job = {}
         pattern = '*.pickled'
         if self.analyze_offline_data:
-            local_path  = 'offline/completed/' 
+            self.local_path  = 'offline/completed/' 
             remote_path = 'data/jobmonitor/completed/'
-            os.makedirs(local_path,exist_ok=True)
+            os.makedirs(self.local_path,exist_ok=True)
             # list files that are already local
-            filenames_local = glob.glob(local_path+pattern)
+            filenames_local = glob.glob(self.local_path+pattern)
             self.n_entries = len(filenames_local)
             #list filenames which are still remote:
             filenames_remote = remote.glob(pattern,remote_path)
             for filename in filenames_remote:
-                if not local_path+filename in filenames_local:
+                if not self.local_path+filename in filenames_local:
                     try:
-                        print('copying',remote_path+filename,'to',local_path,'...',end='')
-                        remote.copy_remote_to_local(local_path+filename,remote_path+filename)
+                        print('copying',remote_path+filename,'to',self.local_path,'...',end='')
+                        remote.copy_remote_to_local(self.local_path+filename,remote_path+filename)
                         print('copied')
-                        filenames_local.append(local_path+filename)
+                        filenames_local.append(self.local_path+filename)
                     except Exception as e:
                         print(e)
                         continue
-            self.filenames = filenames_local
         else:
-            local_path  = 'completed/'
-            self.filenames = glob.glob(local_path+pattern)
-        for fname in self.filenames:
-            self.map_fname_job[fname] = None
-        if self.filenames:
+            self.self.local_path  = 'completed/'
+            filenames_local = glob.glob(self.local_path+pattern)
+            
+        for filepath in filenames_local:
+            filename = filepath.rsplit('/')[-1]
+            self.map_filename_job[filename] = None
+        
+        self.overview_lines = list(self.map_filename_job.keys())
+        if self.overview_lines:
             self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewRefresh_pressed(self):
@@ -153,13 +156,13 @@ class Finished(QtGui.QMainWindow):
             sort_key = completed_jobs_by_time
         else:
             return
-        self.filenames.sort(key=sort_key,reverse=self.ui.qwOverviewReverse.isChecked())
+        self.overview_lines.sort(key=sort_key,reverse=self.ui.qwOverviewReverse.isChecked())
         self.show_overview()
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self):
         """"""
         text = '\n'
-        text+= '\n'.join(self.filenames)
+        text+= '\n'.join(self.overview_lines)
         self.ui.qwOverview.setPlainText(text)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
@@ -175,19 +178,38 @@ class Finished(QtGui.QMainWindow):
             self.ui.qwOverview.setTextCursor(cursor)
         print('selected:',pickled)
         self.show_details(pickled)
-    #---------------------------------------------------------------------------------------------------------         
+    #---------------------------------------------------------------------------------------------------------
+    def overview_move_cursor_to(self,lineno):
+        """
+        """
+        cursor = self.ui.qwOverview.textCursor()
+        for i in range(lineno+1):
+            cursor.movePosition(QtGui.QTextCursor.Down)
+        cursor.select(QtGui.QTextCursor.LineUnderCursor)
+        with IgnoreSignals(self):
+            self.ui.qwOverview.setTextCursor(cursor)                    
+    #---------------------------------------------------------------------------------------------------------
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------             
-    def show_details(self,fname):
+    def show_details(self,overview_line):
         """"""
-        if fname:
-            jobh = self.map_fname_job[fname]
+        if overview_line:
+            filename = overview_line.split(' ',1)[0]
+            jobh = self.map_filename_job[filename]
             if jobh is None:
-                file = open(fname,'rb')
+                file = open(self.local_path+filename,'rb')
                 jobh = JobHistory(load(file))    
-                self.map_fname_job[fname] = jobh
+                self.map_filename_job[filename] = jobh
+                #augment file name in overview:
+                lineno = self.overview_lines.index(overview_line)
+                print(lineno)
+                overview_line += ' [warnings={}/{}, modules={}]'.format(jobh.job.nsamples_with_warnings,jobh.job.nsamples(),jobh.job.jobscript.loaded_modules())
+                self.overview_lines[lineno] = overview_line
+                self.show_overview()
+                self.overview_move_cursor_to(lineno)
             else:
                 jobh.current_timestamp = 0
+                
             self.ui.qwDetailsJobid.setText(jobh.job.username+' '+jobh.job.jobid)
             self.ui.qwDetails.setPlainText(jobh.details)
             self.current_job = jobh # used by move_details
