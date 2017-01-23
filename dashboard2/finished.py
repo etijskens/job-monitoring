@@ -101,7 +101,12 @@ class Finished(QtGui.QMainWindow):
             filenames_local = glob.glob(self.local_path+pattern)
             self.n_entries = len(filenames_local)
             #list filenames which are still remote:
-            filenames_remote = remote.glob(pattern,remote_path)
+            try:
+                filenames_remote = remote.glob(pattern,remote_path)
+            except Exception as e:
+                print(e)
+                print('Continuing with local files only...')
+                filenames_remote = []
             for filename in filenames_remote:
                 if not self.local_path+filename in filenames_local:
                     try:
