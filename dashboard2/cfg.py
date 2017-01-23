@@ -28,4 +28,5 @@ class Cfg:
                 ]
     
     offline = False
-    #   if True we ar running the offline job monitor on a login node.
+    #   if True we are running the offline job monitor on a login node (offline 
+    #   job monitoring), otherwise we are running on a local machine.

@@ -2,15 +2,14 @@
 Main program for job monitoring of finished jobss
 """
 from PyQt4 import QtGui,uic
-import sys
-import argparse
+import sys,os,argparse,glob
 from _collections import OrderedDict
-import glob
 from _pickle import load
 
 from mail import address_of
 from ignoresignals import IgnoreSignals
-# from showq import Job
+import remote
+
 #===================================================================================================
 def completed_jobs_by_user(arg):
     """
@@ -37,11 +36,11 @@ class JobHistory:
         self.job = job
         self.timestamp_begin = []
         line = 1
-        try:
-            self.address = self.job.address
-        except:
+        self.address = self.job.address
+        if not self.job.address:
             self.address = address_of(self.job.username)
         text = self.address
+        assert isinstance(text,str)
         for i,timestamp in enumerate(self.job.timestamps()):
             text += '\n### '+timestamp+' '+(59*'#')
             self.timestamp_begin.append(line)
@@ -64,13 +63,17 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,verbose=False
                      ,test__ =False
+                     ,offline=False
                      ):
         """"""
         super(Finished, self).__init__()
-        self.ui = uic.loadUi('finished.ui',self)
+        self.ui = uic.loadUi('finished3.ui',self)
+        self.ui.qwSplitter.setSizes([100,300])
         self.setWindowTitle('Job monitor - FINISHED jobs')
         self.verbose = verbose
         self.test__  = test__
+        self.analyze_offline_data = offline
+        
         self.ignore_signals = False
         self.current_job = None
         
@@ -79,7 +82,7 @@ class Finished(QtGui.QMainWindow):
         font.setPointSize(11)
         self.ui.qwOverview.setFont(font)
         self.ui.qwDetails .setFont(font)
-        
+
         self.get_file_list()
         
         self.show()
@@ -89,10 +92,34 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     def get_file_list(self):
         self.map_fname_job  = OrderedDict()
-        self.fnames = glob.glob('completed/*.pickled')
-        for fname in self.fnames:
+        pattern = '*.pickled'
+        if self.analyze_offline_data:
+            local_path  = 'offline/completed/' 
+            remote_path = 'data/jobmonitor/completed/'
+            os.makedirs(local_path,exist_ok=True)
+            # list files that are already local
+            filenames_local = glob.glob(local_path+pattern)
+            self.n_entries = len(filenames_local)
+            #list filenames which are still remote:
+            filenames_remote = remote.glob(pattern,remote_path)
+            for filename in filenames_remote:
+                if not local_path+filename in filenames_local:
+                    try:
+                        print('copying',remote_path+filename,'to',local_path,'...',end='')
+                        remote.copy_remote_to_local(local_path+filename,remote_path+filename)
+                        print('copied')
+                        filenames_local.append(local_path+filename)
+                    except Exception as e:
+                        print(e)
+                        continue
+            self.filenames = filenames_local
+        else:
+            local_path  = 'completed/'
+            self.filenames = glob.glob(local_path+pattern)
+        for fname in self.filenames:
             self.map_fname_job[fname] = None
-        self.sort_overview()
+        if self.filenames:
+            self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewRefresh_pressed(self):
         self.get_file_list()
@@ -126,13 +153,13 @@ class Finished(QtGui.QMainWindow):
             sort_key = completed_jobs_by_time
         else:
             return
-        self.fnames.sort(key=sort_key,reverse=self.ui.qwOverviewReverse.isChecked())
+        self.filenames.sort(key=sort_key,reverse=self.ui.qwOverviewReverse.isChecked())
         self.show_overview()
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self):
         """"""
         text = '\n'
-        text+= '\n'.join(self.fnames)
+        text+= '\n'.join(self.filenames)
         self.ui.qwOverview.setPlainText(text)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
@@ -223,6 +250,7 @@ class Finished(QtGui.QMainWindow):
         """
         if self.current_job is None:
             return
+        address = address_of(self.username)
         print(address)
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)
@@ -235,10 +263,12 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser('finished')
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
+    parser.add_argument('--offline',action='store_true')
     args = parser.parse_args()
     print(args)
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
+                       ,offline = args.offline
                        )
     finished.show()
     

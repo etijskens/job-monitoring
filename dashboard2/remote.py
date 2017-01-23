@@ -104,6 +104,21 @@ def run_remote( command, connection=the_connection ):
         lines = sout.split('\n')
         return lines
 #===============================================================================
+def glob(pattern,path=None):
+    """
+    a remote glob
+    """
+    if path:
+        command ='cd {} ; ls -1 {}'.format(path,pattern)
+    else:
+        command ='ls -1 {}'.format(pattern)
+        
+    lines = run_remote(command)
+    # remove trailing empty lines
+    while not lines[-1]:
+        lines.pop()
+    return lines
+#===============================================================================
 def copy_local_to_remote(local_path,remote_path, connection=the_connection):
     sftp = connection.paramiko_client.open_sftp()
     sftp.put(local_path, remote_path)

@@ -9,4 +9,4 @@ echo $$ >  pid.txt
 echo $$ >  ojm.log
 date    >> ojm.log
 python --version 2>&1 >> ojm.log
-python ojm.py    2>&1 
+python ojm.py    2>>     ojm.log 

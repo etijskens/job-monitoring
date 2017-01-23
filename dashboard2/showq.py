@@ -469,7 +469,7 @@ class Sampler:
             if timestamp==self.timestamps[-1]:
                 return # this timestamp is already in the samples
         self.timestamps.append(timestamp)
-        filenames = remote.run_remote('cd data/jobmonitor/running/; ls *.pickled')
+        filenames = remote.glob('*.pickled','data/jobmonitor/running/')
         self.n_entries = 0
         for filename in filenames:
             if not filename: # empty line
