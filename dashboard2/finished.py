@@ -3,7 +3,6 @@ Main program for job monitoring of finished jobss
 """
 from PyQt4 import QtGui,uic
 import sys,os,argparse,glob
-from _collections import OrderedDict
 from _pickle import load
 
 from mail import address_of
@@ -86,7 +85,6 @@ class Finished(QtGui.QMainWindow):
         self.get_file_list()
         
         self.show()
-        
     #---------------------------------------------------------------------------------------------------------
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
@@ -188,8 +186,10 @@ class Finished(QtGui.QMainWindow):
         """
         """
         cursor = self.ui.qwOverview.textCursor()
-        for i in range(lineno+1):
+        i = 0
+        while i<=lineno:
             cursor.movePosition(QtGui.QTextCursor.Down)
+            i+=1
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
         with IgnoreSignals(self):
             self.ui.qwOverview.setTextCursor(cursor)                    
@@ -208,7 +208,15 @@ class Finished(QtGui.QMainWindow):
                 #augment file name in overview:
                 lineno = self.overview_lines.index(overview_line)
                 print(lineno)
-                overview_line += ' [warnings={}/{}, modules={}]'.format(jobh.job.nsamples_with_warnings,jobh.job.nsamples(),jobh.job.jobscript.loaded_modules())
+                job = jobh.job
+                overview_line += ' [warnings={}/{}, C*wall/cput={}, N|C= {}|{}, modules={}]' \
+                                 .format( job.nsamples_with_warnings
+                                        , job.nsamples()
+                                        , job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
+                                        , job.samples[job.last_timestamp].get_nnodes()
+                                        , job.samples[job.last_timestamp].get_ncores()
+                                        , job.jobscript.loaded_modules()
+                                        )
                 self.overview_lines[lineno] = overview_line
                 self.show_overview()
                 self.overview_move_cursor_to(lineno)
@@ -253,7 +261,12 @@ class Finished(QtGui.QMainWindow):
             i = max(0,i)
             i = min(i,self.current_job.job.nsamples()-1)
         self.current_job.current_timestamp = i
-        self.ui.qwDetailsNSamples.setText('{} / {}'.format(i,self.current_job.job.nsamples()))
+        nsamples = self.current_job.job.nsamples()
+        if i > -1:
+            j = i+1
+        else:
+            j=nsamples
+        self.ui.qwDetailsNSamples.setText('{} / {}'.format(j,nsamples))
         self.ui.qwDetailsTimestamp.setText(self.current_job.job.timestamps()[i])
         line = self.current_job.timestamp_begin[i]
         cursor = self.ui.qwDetails.textCursor()

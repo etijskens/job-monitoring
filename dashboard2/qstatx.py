@@ -1,9 +1,7 @@
 from remote import run_remote
-from _collections import OrderedDict
-from constants import bold, normal, red, green, default, str2gb
-import datetime
+from collections import OrderedDict
+from constants import str2gb
 from cpus import cpu_list, Data_sar
-from script import Data_jobscript
 
 #===============================================================================    
 def run_qstat_f(jobid):
@@ -54,23 +52,24 @@ class Data_qstat:
             words2 = word.split('/')
             node = words2[0].split('.',1)[0]
             self.node_cores[node] = words2[1]
-            
-        
     #---------------------------------------------------------------------------    
     def get_nnodes(self):
         return len( self.node_cores )
-    
+    #---------------------------------------------------------------------------
+    def get_ncores(self):
+        ncores = 0
+        for cores in self.node_cores.values():
+            ncores += len(cpu_list(cores))
+        return ncores
     #---------------------------------------------------------------------------    
     def get_exec_host(self):
         value = self.data['exec_host']
         return value
-    
     #---------------------------------------------------------------------------    
     def get_username(self):
         value = self.data['Job_Owner']
         value = value.split('@')[0]
         return value
-    
     #---------------------------------------------------------------------------    
     def get_master_node(self):
         """
@@ -79,7 +78,6 @@ class Data_qstat:
         """
         value = self.data['exec_host'].split('/',1)[0]
         return value
-    
     #---------------------------------------------------------------------------    
     def get_walltime_remaining(self,fmt=True):
         """
@@ -97,8 +95,7 @@ class Data_qstat:
         value -= minutes*60
         seconds = value
         s = '{:0>2d}:{:0>2d}:{:0>2d}'.format(hours,minutes,seconds)
-        return s
-    
+        return s    
     #---------------------------------------------------------------------------    
     def get_walltime_used(self):
         try: 
@@ -107,7 +104,6 @@ class Data_qstat:
             print(e)
             value = '?'
         return value
-    
     #---------------------------------------------------------------------------    
     def get_job_state(self,fmt=True):
         """
@@ -126,7 +122,6 @@ class Data_qstat:
             ,'S':'suspended'
             }[value]
         return '{} ({})'.format(value,s)
-    
     #---------------------------------------------------------------------------    
     def get_mem_used(self):
         try:
@@ -134,9 +129,8 @@ class Data_qstat:
         except KeyError:
             return 0
         value = str2gb(s)
-        return value
-        
-      #---------------------------------------------------------------------------    
+        return value 
+    #---------------------------------------------------------------------------    
     def get_mem_requested(self):
         try:
             s = self.data['Resource_List']['mem'] # returns a str such as 'NNgb'
@@ -144,7 +138,6 @@ class Data_qstat:
             return 0 # nothing was requested?
         value = str2gb(s)
         return value
-    
     #---------------------------------------------------------------------------    
     def sar(self):
         for compute_node,cores in self.node_cores.items():
@@ -154,7 +147,6 @@ class Data_qstat:
             data_sar = Data_sar(compute_node,cores)
             self.node_sar[compute_node] = data_sar                
     #---------------------------------------------------------------------------        
-
     def is_interactive_job(self):
         try:
             s = self.data['submit_args']
@@ -162,7 +154,7 @@ class Data_qstat:
             return tf
         except:
             return False
-        
+    #---------------------------------------------------------------------------        
 ################################################################################
 # test code below
 ################################################################################

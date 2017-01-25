@@ -6,14 +6,10 @@ from cfg import Cfg
 from constants import bell
 from mail import address_of
 from ignoresignals import IgnoreSignals
-import remote
 
 from PyQt4 import QtGui,QtCore,uic
 import sys
 import argparse
-import os
-from shutil import rmtree
-import pickle
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
     """

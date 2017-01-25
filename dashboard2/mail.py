@@ -1,7 +1,7 @@
 import remote
 
 import pickle
-from _collections import OrderedDict
+from collections import OrderedDict
 
 #===================================================================================================
 the_mail_adresses = None

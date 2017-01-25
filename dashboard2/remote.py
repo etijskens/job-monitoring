@@ -41,6 +41,7 @@ class Connection:
             print("failed to connected")            
             print(self.paramiko_client)
             self.paramiko_client = None
+        print('connected:',username)
     #---------------------------------------------------------------------------    
     def is_connected(self):
         """
@@ -129,4 +130,3 @@ def copy_remote_to_local(local_path,remote_path, connection=the_connection):
     sftp.get(remote_path,local_path)
     sftp.close()
 #===============================================================================
- 

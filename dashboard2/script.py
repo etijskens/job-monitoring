@@ -1,5 +1,5 @@
 from remote import run_remote
-from constants import dim, normal, bold, default, green, blue, magenta
+from constants import dim, normal, bold, default, green
 
 _test = False
 
@@ -84,7 +84,7 @@ class Data_jobscript:
                         self.clean.append(stripped) 
                 else:
                     self.clean.append(line)
-                    
+        self.modules = None                    
     #---------------------------------------------------------------------------    
     def __str__(self):
         s = ''
@@ -100,17 +100,20 @@ class Data_jobscript:
     
     #---------------------------------------------------------------------------    
     def loaded_modules(self):
-        modules = []
-        for line in self.clean:
-            words = line.split()
-            if len(words)>2:
-                if words[0]=='module' and words[1] in ['load','add']:
-                    modules.append(words[2])
-        return modules
-    
+        if not hasattr(self,'modules'):
+            self.modules = None
+        if self.modules is None:
+            self.modules = []
+            for line in self.clean:
+                words = line.split()
+                if len(words)>2:
+                    if words[0]=='module' and words[1] in ['load','add']:
+                        self.modules.append(words[2])
+        return self.modules    
     #---------------------------------------------------------------------------    
     def isempty(self):
         return len(self.clean)==0
+    #---------------------------------------------------------------------------    
     
 ################################################################################
 # test code below

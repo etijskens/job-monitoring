@@ -1,18 +1,17 @@
 import remote
-from cpus   import cpu_list
-from script import Data_jobscript
-from cfg import Cfg
+from cpus       import cpu_list
+from script     import Data_jobscript
+from cfg        import Cfg
+from constants  import cluster_properties, current_cluster
+from qstatx     import Data_qstat
+from rules      import EfficiencyThresholdRule
+from timestamp  import get_timestamp
+from titleline  import title_line
+from mycollections import OrderedDict,od_add_list_item
 
-from constants import cluster_properties, current_cluster
-from qstatx import Data_qstat
-from rules import EfficiencyThresholdRule
-from timestamp import get_timestamp
-from titleline import title_line
-from listdict import ListDict
+import pickle,os,shutil
+from time       import sleep
 
-from _collections import OrderedDict
-import pickle,os,datetime,shutil
-from time import sleep
 # list of users we want to ignore for the time being...
 ignore_users = []
 
@@ -132,9 +131,8 @@ class JobSample:
             # if it is ok, we assume that it is also ok on the slqve nodes (but we are not sure)
             self.effic = corrected_effic
         
-        self.details = ''
-        
-   #---------------------------------------------------------------------------
+        self.details = ''       
+    #---------------------------------------------------------------------------
     def check_for_issues(self):
         """
         returns True (False) if there are (aren't) issues 
@@ -178,8 +176,8 @@ class JobSample:
         desc = '{} {} {} {}|{}'.format( self.showq_job_entry.get_jobid()
                                       , self.showq_job_entry.get_username()
                                       , self.showq_job_entry.get_mhost()
-                                      , self.data_qstat     .get_nnodes()
-                                      , self.showq_job_entry.get_ncores()
+                                      , self.get_nnodes()
+                                      , self.get_ncores()
                                       )
         return desc
     
@@ -225,7 +223,47 @@ class JobSample:
         self.details += title_line(width=100)
             
         return self.details
+    #---------------------------------------------------------------------------        
+    
+    def cputime_walltime_ratio(self,scale_with_ncores=True):
+        """
+        should be close to one for well-performing jobs.
+        """
+        walltime = hhmmss2s( self.data_qstat.data['resources_used']['walltime'] )
+        cputime  = hhmmss2s( self.data_qstat.data['resources_used']['cput'] )
+        ncores   = self.get_ncores()
+        ratio = cputime/(ncores*walltime)
+        if ratio > 1:
+            if ratio > 1.05:
+                print('WARNING: cputime_walltime_ratio > 1.0 :',ratio)
+            ratio = 1.0
+        return ratio
+    #---------------------------------------------------------------------------
+    def cputime_walltime_ratio_as_str(self,scale_with_ncores=True):
+        """
+        should be close to one for well-performing jobs.
+        """
+        try:
+            ratio = self.cputime_walltime_ratio()
+            s = '{:4.2f}'.format(ratio)
+        except KeyError:
+            s = '?.??'
+        return s
+    #---------------------------------------------------------------------------
+    def get_ncores(self):        
+        return self.showq_job_entry.get_ncores()
+    #---------------------------------------------------------------------------        
+    def get_nnodes(self):        
+        return self.data_qstat.get_nnodes()
+    #---------------------------------------------------------------------------        
         
+#===============================================================================
+def hhmmss2s(hhmmss):
+    words = hhmmss.split(':')
+    assert len(words)==3
+    seconds = int(words[2]) + 60*( int(words[1]) + 60*int(words[0]) )
+    return seconds 
+#-------------------------------------------------------------------------------        
 #===============================================================================
 class Job:
     #---------------------------------------------------------------------------    
@@ -270,10 +308,6 @@ class Job:
     #---------------------------------------------------------------------------
     def nsamples(self):
         return len(self.samples)
-    #---------------------------------------------------------------------------
-#     def is_finished(self,current_timestamp):
-#         tf = self.last_timestamp < current_timestamp
-#         return tf
     #---------------------------------------------------------------------------
     def check_for_issues(self,timestamp):
         sample = self.samples[timestamp] 
@@ -321,15 +355,16 @@ class Sampler:
             self.sampling_interval = interval
         self.qMainWindow = qMainWindow
             
-        self.overviews = OrderedDict()  # {timestamp:job_overview}
-        self.jobs    = {}               # {jobid    :Job object  }
-        self.timestamps = []         # [datetime.strftime(timestamp_format)]
-        self.timestamp_jobs = ListDict()# {timestamp:[jobids]}
+        self.overviews = OrderedDict()      # {timestamp:job_overview}
+        self.jobs    = {}                   # {jobid    :Job object  }
+        self.timestamps = []                # [datetime.strftime(timestamp_format)]
+        self.timestamp_jobs = OrderedDict() # {timestamp:[jobids]}
         self.jobids_running_previous = []
     #---------------------------------------------------------------------------    
     def sample(self,verbose=False,test__=False):
         """
         """
+        # get relevan part of showq output
         job_entries = run_showq()
         self.n_entries   = len(job_entries)
         
@@ -344,12 +379,12 @@ class Sampler:
         # and a list wit all uncompleted jobids
         # the latter is compared to the jobid list of the previous sample to find
         # out which jobs are finished.
-        self.mhost_jobs = ListDict()
+        self.mhost_jobs = OrderedDict()
         self.jobids_running = []
         for job_entry in job_entries:
             mhost = job_entry.get_mhost()
             jobid = job_entry.get_jobid()
-            self.mhost_jobs.add(mhost,jobid)
+            od_add_list_item(self.mhost_jobs,mhost,jobid)
             self.jobids_running.append(jobid)
             try:
                 self.jobids_running_previous.remove(jobid)
@@ -377,6 +412,7 @@ class Sampler:
             #   if ths file is absent ojm is sampling. 
             print(title_line(timestamp, width=100, above=True, below=True),end='')
             
+        # loop over the running jobs (job_entries) 
         overview = [] # one warning per job with issues, jobs without issues are skipped
         if test__:
             n_ok = 0
@@ -388,7 +424,7 @@ class Sampler:
             if job_entry.get_state() != 'Running':
                 continue # we only analyze running jobs
             jobid = job_entry.get_jobid()
-            self.timestamp_jobs.add(timestamp,jobid)
+            od_add_list_item(self.timestamp_jobs,timestamp,jobid)
                         
             if self.qMainWindow is None:
                 printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
@@ -515,7 +551,7 @@ class Sampler:
         """
         self.jobs[job.jobid] = job
         for timestamp,job_sample in job.samples.items():
-            self.timestamp_jobs.add(timestamp, job.jobid)
+            od_add_list_item(self.timestamp_jobs,timestamp,job.jobid)
             overview_line = job_sample.compose_overview()
             if not timestamp in self.overviews:
                 self.overviews[timestamp] = [overview_line]
@@ -533,7 +569,7 @@ class Sampler:
     #---------------------------------------------------------------------------
     def when_done_adding_offline_jobs(self):
         self.timestamps.sort()
-        for timestamp,jobid_list in self.timestamp_jobs:
+        for jobid_list in self.timestamp_jobs.values():
             jobid_list.sort()
     #---------------------------------------------------------------------------    
     
