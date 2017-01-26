@@ -259,7 +259,7 @@ if __name__=='__main__':
     parser.add_argument('--offline',action='store_true')
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
-    print(args)
+    print('Dashboard.py: command line arguments:',args)
     Cfg.sampling_interval = args.interval
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep

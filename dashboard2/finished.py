@@ -305,7 +305,7 @@ if __name__=='__main__':
     parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline',action='store_true')
     args = parser.parse_args()
-    print(args)
+    print('Finished.py: command line arguments:',args)
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
                        ,offline = args.offline
