@@ -1,6 +1,7 @@
 #==================================================================================================
 def title_line(text='', width=80,char='*',start=4,above=False,below=False):
-    line0 = width*char + '\n'
+    w = int(width/len(char))
+    line0 = w*char + '\n'
     if text:
         text = ' '+text+' '
     n =len(text)
@@ -20,6 +21,7 @@ if __name__=='__main__':
 
     print(title_line('hello',width=100))
     print(title_line('hello',below=True,above=True,char='%'))
+    print(title_line('hello',below=True,above=True,char='= '))
     print(title_line(width=100))
     
     print('--finished--')

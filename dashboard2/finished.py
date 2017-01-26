@@ -8,6 +8,8 @@ from _pickle import load
 from mail import address_of
 from ignoresignals import IgnoreSignals
 import remote
+from titleline import title_line
+from pyasn1.type import char
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -29,7 +31,8 @@ def completed_jobs_by_time(arg):
     return arg.split(' ',1)[0].split('_',3)[2]#.split('.',1)[0]
 #===================================================================================================
 class JobHistory:
-    """"""
+    """
+    """
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,job):
         self.job = job
@@ -39,19 +42,20 @@ class JobHistory:
         if not self.job.address:
             self.address = address_of(self.job.username)
         text = self.address
-        text += '\nOverall efficiency '+job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
-        assert isinstance(text,str)
+        text += '\nOverall efficiency: '+job.samples[job.last_timestamp].overall_efficiency_as_str()
+        text += '\nOverall memory use: {} GB\n'.format(round(job.overall_memory_used(),3))
         for i,timestamp in enumerate(self.job.timestamps()):
-            text += '\n### '+timestamp+' '+(59*'#')
+            text += '\n'+title_line(          char='=',width=100) \
+                        +title_line(timestamp,char='=',width=100)
             self.timestamp_begin.append(line)
             timestamp_details = job.get_details(timestamp)+'\n'
             if i>0: # remove the script, it already appears in the first sample.
-                pos = timestamp_details.find('*** Script')
+                pos = timestamp_details.find('--- Script')
                 if pos > -1:
                     timestamp_details = timestamp_details[:pos]
             line += timestamp_details.count('\n') + 1
             text += timestamp_details
-        text += '\n'+80*'#'
+        text += '\n'+title_line(char='=',width=100)
         self.details = text
         self.current_timestamp = 0
     #---------------------------------------------------------------------------------------------------------         
@@ -60,10 +64,12 @@ class JobHistory:
 class Finished(QtGui.QMainWindow):
     """
     """
+    default_local_folder = 'offline/completed/'
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,verbose=False
                      ,test__ =False
                      ,offline=False
+                     ,folder ='offline/completed/'
                      ):
         """"""
         super(Finished, self).__init__()
@@ -73,6 +79,10 @@ class Finished(QtGui.QMainWindow):
         self.verbose = verbose
         self.test__  = test__
         self.analyze_offline_data = offline
+        self.local_folder = folder # where finished.py looks for finished jobs. 
+        #   If not equal to Finished.default_local_folder, no new finished jobs
+        #   are copied from the remote folder.
+        self.fetch_remote = (self.local_folder==Finished.default_local_folder)
         
         self.ignore_signals = False
         self.current_job = None
@@ -93,32 +103,32 @@ class Finished(QtGui.QMainWindow):
         self.map_filename_job = {}
         pattern = '*.pickled'
         if self.analyze_offline_data:
-            self.local_path  = 'offline/completed/' 
-            remote_path = 'data/jobmonitor/completed/'
-            os.makedirs(self.local_path,exist_ok=True)
+            os.makedirs(self.local_folder,exist_ok=True)
             # list files that are already local
-            filenames_local = glob.glob(self.local_path+pattern)
-            self.n_entries = len(filenames_local)
-            #list filenames which are still remote:
-            try:
-                filenames_remote = remote.glob(pattern,remote_path)
-            except Exception as e:
-                print(e)
-                print('Continuing with local files only...')
-                filenames_remote = []
-            for filename in filenames_remote:
-                if not self.local_path+filename in filenames_local:
-                    try:
-                        print('copying',remote_path+filename,'to',self.local_path,'...',end='')
-                        remote.copy_remote_to_local(self.local_path+filename,remote_path+filename)
-                        print('copied')
-                        filenames_local.append(self.local_path+filename)
-                    except Exception as e:
-                        print(e)
-                        continue
+            filenames_local = glob.glob(os.path.join(self.local_folder,pattern))
+            self.n_entries = len(filenames_local)            
+            if self.fetch_remote:
+                #list filenames which are still remote:
+                remote_path = 'data/jobmonitor/completed/'
+                try:
+                    filenames_remote = remote.glob(pattern,remote_path)
+                except Exception as e:
+                    print(e)
+                    print('Continuing with local files only...')
+                    filenames_remote = []
+                for filename in filenames_remote:
+                    if not self.local_folder+filename in filenames_local:
+                        try:
+                            print('copying',remote_path+filename,'to',self.local_folder,'...',end='')
+                            remote.copy_remote_to_local(self.local_folder+filename,remote_path+filename)
+                            print('copied')
+                            filenames_local.append(self.local_folder+filename)
+                        except Exception as e:
+                            print(e)
+                            continue
         else:
-            self.self.local_path  = 'completed/'
-            filenames_local = glob.glob(self.local_path+pattern)
+            self.self.local_folder  = 'completed/'
+            filenames_local = glob.glob(self.local_folder+pattern)
             
         for filepath in filenames_local:
             filename = filepath.rsplit('/')[-1]
@@ -203,7 +213,7 @@ class Finished(QtGui.QMainWindow):
             filename = overview_line.split(' ',1)[0]
             jobh = self.map_filename_job[filename]
             if jobh is None:
-                file = open(self.local_path+filename,'rb')
+                file = open(os.path.join(self.local_folder,filename),'rb')
                 jobh = JobHistory(load(file))    
                 self.map_filename_job[filename] = jobh
                 #augment file name in overview:
@@ -298,11 +308,13 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--folder' ,action='store',type=str)
     args = parser.parse_args()
     print('Finished.py: command line arguments:',args)
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
                        ,offline = args.offline
+                       ,folder  = args.folder
                        )
     finished.show()
     

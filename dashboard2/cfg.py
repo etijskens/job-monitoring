@@ -22,11 +22,6 @@ class Cfg:
     verbose = False
 #     history = History()
     rules.EfficiencyThresholdRule.effic_threshold = effic_threshold
-    the_rules = [ rules.EfficiencyThresholdRule()
-                , rules.CoresInUseRule()
-                , rules.TooManyWarningsRule()
-                , rules.NoModulesRule()
-                ]
     
     offline = False
     #   if True we are running the offline job monitor on a login node (offline 

@@ -1,11 +1,12 @@
 from constants import cluster_properties, current_cluster
-# from job_sample import Job
+
 
 #===============================================================================    
 class Rule:
     def __init__(self,ignore_in_job_details=False,severity=1):
         self.ignore_in_job_details = ignore_in_job_details
         self.severity = severity
+        # rules with severity==0 do not add up to the number of warnings sofar. 
     #---------------------------------------------------------------------------
 
 #===============================================================================    
@@ -75,7 +76,8 @@ class TooManyWarningsRule(Rule):
         if nsamples < TooManyWarningsRule.mininum_samples:
             return ''        
         nwarnings_sofar = 0
-        for rule,count in job_sample.parent_job.warning_counts.items():
+        for irule,count in enumerate(job_sample.parent_job.warning_counts):
+            rule = the_rules[irule]
             if rule.severity>0:
                 nwarnings_sofar += count
         if nwarnings_sofar/nsamples < self.maximum_warnings:
@@ -101,6 +103,14 @@ class NoModulesRule(Rule):
             return ''
         return self.warning
     #---------------------------------------------------------------------------
+
+#===============================================================================    
+the_rules = [ EfficiencyThresholdRule()
+            , CoresInUseRule()
+            , TooManyWarningsRule()
+            , NoModulesRule()
+            ]
+#===============================================================================    
 
 ################################################################################
 # test code below

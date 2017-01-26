@@ -7,6 +7,7 @@ from qstatx     import Data_qstat
 from rules      import EfficiencyThresholdRule
 from timestamp  import get_timestamp
 from titleline  import title_line
+import          rules
 from mycollections import OrderedDict,od_add_list_item
 
 import pickle,os,shutil
@@ -130,7 +131,11 @@ class JobSample:
             corrected_effic = round(self.effic*total_ncores_in_use/ncores_mhost,2)
             # if it is ok, we assume that it is also ok on the slqve nodes (but we are not sure)
             self.effic = corrected_effic
-        
+            try:
+                overall_effic = self.overall_efficiency()
+                self.effic = overall_effic
+            except Exception:
+                pass
         self.details = ''       
     #---------------------------------------------------------------------------
     def check_for_issues(self):
@@ -141,11 +146,11 @@ class JobSample:
         self.overview = ''
         self.details  = ''
         if not self.data_qstat.is_interactive_job(): #interactive jobs are ignored
-            for rule in Cfg.the_rules:
+            for irule,rule in enumerate(rules.the_rules):
                 msg = rule.check(self)
                 if msg:
                     self.warnings.append(msg)
-                    self.parent_job.warning_counts[rule] += 1
+                    self.parent_job.warning_counts[irule] += 1
         
         if self.warnings:
             self.parent_job.nsamples_with_warnings += 1
@@ -193,7 +198,8 @@ class JobSample:
                                                                            , self.parent_job.nsamples()
                                                                            , round(100*self.parent_job.nsamples_with_warnings/self.parent_job.nsamples(),2)
                                                                            )
-        for rule,count in self.parent_job.warning_counts.items():
+        for irule,count in enumerate(self.parent_job.warning_counts):
+            rule = rules.the_rules[irule]
             if not rule.ignore_in_job_details and count>0:
                 self.details +='\n  {:25}: {:5}'.format(rule.warning,count)
                 
@@ -213,20 +219,20 @@ class JobSample:
         self.details += str(self.parent_job.neighbouring_jobs) 
         self.details += '\n'
         if self.data_qstat.node_sar:
-            self.details += title_line('sar -P ALL 1 1',width=100)
+            self.details += title_line('sar -P ALL 1 1',width=100,char='-')
             for node, data_sar in self.data_qstat.node_sar.items():
                 for line in data_sar.data_cores:
                     self.details += node+' '+line +'\n'
-        self.details += title_line('Script',width=100) 
+        self.details += title_line('Script',width=100,char='-') 
         for line in self.parent_job.jobscript.clean:
             self.details += line+'\n'
         self.details += title_line(width=100)
             
         return self.details
     #---------------------------------------------------------------------------        
-    
-    def cputime_walltime_ratio(self,scale_with_ncores=True):
+    def overall_efficiency(self):
         """
+        cputime (used by all cores) / (ncores*walltime)
         should be close to one for well-performing jobs.
         """
         walltime = hhmmss2s( self.data_qstat.data['resources_used']['walltime'] )
@@ -235,16 +241,16 @@ class JobSample:
         ratio = cputime/(ncores*walltime)
         if ratio > 1:
             if ratio > 1.05:
-                print('WARNING: cputime_walltime_ratio > 1.0 :',ratio)
+                print('WARNING: overall efficiency > 1.0 :',ratio)
             ratio = 1.0
         return ratio
     #---------------------------------------------------------------------------
-    def cputime_walltime_ratio_as_str(self,scale_with_ncores=True):
+    def overall_efficiency_as_str(self,):
         """
         should be close to one for well-performing jobs.
         """
         try:
-            ratio = self.cputime_walltime_ratio()
+            ratio = self.overall_efficiency()
             s = '{:4.2f}'.format(ratio)
         except KeyError:
             s = '?.??'
@@ -279,9 +285,7 @@ class Job:
         self.neighbouring_jobs = neighbouring_jobs # list of jobs on the mhost        
         
         self.nsamples_with_warnings = 0
-        self.warning_counts = {}
-        for rule in Cfg.the_rules:
-            self.warning_counts[rule] = 0
+        self.warning_counts = len(rules.the_rules)*[0]
             
         self.samples = OrderedDict() #{timestamp:JobSamnple object}
         self.first_timestamp = timestamp
@@ -320,6 +324,12 @@ class Job:
             overview_line = ''
         return overview_line
     #---------------------------------------------------------------------------
+    def overall_memory_used(self):
+        mem_used = 0
+        for sample in self.samples.values():
+            mem_used = max(mem_used,sample.data_qstat.get_mem_used())
+        return mem_used
+    #---------------------------------------------------------------------------
     def get_details(self,timestamp):
         if not timestamp in self.samples:
             timestamp = self.timestamps()[-1]
@@ -333,34 +343,39 @@ class Job:
         except:
             print('failed to remove',fname)
     #---------------------------------------------------------------------------
-    def pickle(self,prefix,only_if_warnings=True):
+    def pickle(self,prefix,only_if_warnings=True,verbose=False):
         if (only_if_warnings and self.nsamples_with_warnings) \
         or (not only_if_warnings): 
-            if prefix=='running':
-                fname = '{}/{}_{}.pickled'   .format(prefix,self.username,self.jobid)
+            if 'running' in prefix:
+                fname = '{}_{}.pickled'   .format(self.username,self.jobid)
             else:
-                fname = '{}/{}_{}_{}.pickled'.format(prefix,self.username,self.jobid,self.timestamps()[-1])
-            with open(fname,'wb') as f:
+                fname = '{}_{}_{}.pickled'.format(self.username,self.jobid,self.timestamps()[-1])
+            fpath = os.path.join(prefix,fname)
+            with open(fpath,'wb') as f:
                 pickle.dump(self,f)
-            print(' (pickled {})'.format(fname))
+                if verbose:
+                    print(' (pickled {})'.format(fpath))
     #---------------------------------------------------------------------------
 #===============================================================================   
-def unpickle(prefix,username,jobid,timestamp=''):
+def unpickle(prefix,username,jobid,timestamp='',verbose=False):
     """
     This is the counterpart of Job.pickle()
     :returns: the Job object that was pickled, or None if inexisting.
     """
-    if prefix=='running':
-        fname = '{}/{}_{}.pickled'   .format(prefix,username,jobid)
+    if 'running' in prefix:
+        fname = '{}_{}.pickled'   .format(username,jobid)
     else:
-        fname = '{}/{}_{}_{}.pickled'.format(prefix,username,jobid,timestamp)
-    if os.path.exists(fname):
-        job = pickle.load( open(fname,'rb') )
-        print(' (unpickled {})'.format(fname))
+        fname = '{}_{}_{}.pickled'.format(username,jobid,timestamp)
+    fpath = os.path.join(prefix,fname)
+    if os.path.exists(fpath):
+        job = pickle.load( open(fpath,'rb') )
+        if verbose:
+            print(' (unpickled {})\n'.format(fpath))
     else:
         job = None
+        if verbose:
+            print(' (not found {})\n'.format(fpath))
     return job
-    
 #===============================================================================   
 class Sampler:
     #---------------------------------------------------------------------------    
@@ -417,7 +432,7 @@ class Sampler:
                 job = self.jobs.pop(jobid)
             except KeyError:
                 continue
-            job.pickle('completed')
+            job.pickle('completed/',verbose=True)
             if Cfg.offline:
                 job.remove_file()
         timestamp = get_timestamp()
@@ -454,13 +469,15 @@ class Sampler:
             if not jobid in self.jobs:
                 # this job is encountered for the first time
                 # or this is a restart and the job was pickled 
-                job =  unpickle('running', username, jobid)
+                job =  unpickle('running', username, jobid, verbose=verbose)
                 if job is None:
                     # this job is really encountered for the first time
                     mhost = job_entry.get_mhost()
                     neighbouring_jobs = list(self.mhost_jobs[mhost]) # make copy of the list 
                     neighbouring_jobs.remove(jobid)
                     job = Job(job_entry,neighbouring_jobs,timestamp)
+                else:
+                    job.add_sample(job_entry,timestamp)
                 self.jobs[jobid] = job 
             else:
                 job = self.jobs[jobid]
@@ -473,7 +490,7 @@ class Sampler:
                     print('\n'+timestamp+'\n')
                     print(job.get_details(timestamp))
                 if Cfg.offline:
-                    job.pickle('running')
+                    job.pickle('running', verbose=verbose)
             
             if test__:
                 if overview_line:
