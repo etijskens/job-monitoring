@@ -210,14 +210,7 @@ class Finished(QtGui.QMainWindow):
                 lineno = self.overview_lines.index(overview_line)
                 print(lineno)
                 job = jobh.job
-                overview_line += ' warnings={}/{}' \
-                                 .format( job.nsamples_with_warnings
-                                        , job.nsamples()
-#                                         , job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
-#                                         , job.samples[job.last_timestamp].get_nnodes()
-#                                         , job.samples[job.last_timestamp].get_ncores()
-#                                         , job.jobscript.loaded_modules()
-                                        )
+                overview_line += ' warnings={}/{}'.format( job.nsamples_with_warnings, job.nsamples() )
                 self.overview_lines[lineno] = overview_line
                 self.show_overview()
                 self.overview_move_cursor_to(lineno)

@@ -326,6 +326,13 @@ class Job:
         details = self.samples[timestamp].compose_details()
         return details
     #---------------------------------------------------------------------------
+    def remove_file(self):
+        fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
+        try:
+            os.remove(fname)
+        except:
+            print('failed to remove',fname)
+    #---------------------------------------------------------------------------
     def pickle(self,prefix,only_if_warnings=True):
         if (only_if_warnings and self.nsamples_with_warnings) \
         or (not only_if_warnings): 
@@ -337,13 +344,22 @@ class Job:
                 pickle.dump(self,f)
             print(' (pickled {})'.format(fname))
     #---------------------------------------------------------------------------
-    def remove_file(self):
-        fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
-        try:
-            os.remove(fname)
-        except:
-            print('failed to remove',fname)
-    #---------------------------------------------------------------------------
+#===============================================================================   
+def unpickle(prefix,username,jobid,timestamp=''):
+    """
+    This is the counterpart of Job.pickle()
+    :returns: the Job object that was pickled, or None if inexisting.
+    """
+    if prefix=='running':
+        fname = '{}/{}_{}.pickled'   .format(prefix,username,jobid)
+    else:
+        fname = '{}/{}_{}_{}.pickled'.format(prefix,username,jobid,timestamp)
+    if os.path.exists(fname):
+        job = pickle.load( open(fname,'rb') )
+        print(' (unpickled {})'.format(fname))
+    else:
+        job = None
+    return job
     
 #===============================================================================   
 class Sampler:
@@ -423,7 +439,8 @@ class Sampler:
         for i_entry,job_entry in enumerate(job_entries):
             if job_entry.get_state() != 'Running':
                 continue # we only analyze running jobs
-            jobid = job_entry.get_jobid()
+            jobid    = job_entry.get_jobid()
+            username = job_entry.get_username()
             od_add_list_item(self.timestamp_jobs,timestamp,jobid)
                         
             if self.qMainWindow is None:
@@ -436,10 +453,14 @@ class Sampler:
                 
             if not jobid in self.jobs:
                 # this job is encountered for the first time
-                mhost = job_entry.get_mhost()
-                neighbouring_jobs = list(self.mhost_jobs[mhost]) # make copy of the list 
-                neighbouring_jobs.remove(jobid)
-                job = Job(job_entry,neighbouring_jobs,timestamp)
+                # or this is a restart and the job was pickled 
+                job =  unpickle('running', username, jobid)
+                if job is None:
+                    # this job is really encountered for the first time
+                    mhost = job_entry.get_mhost()
+                    neighbouring_jobs = list(self.mhost_jobs[mhost]) # make copy of the list 
+                    neighbouring_jobs.remove(jobid)
+                    job = Job(job_entry,neighbouring_jobs,timestamp)
                 self.jobs[jobid] = job 
             else:
                 job = self.jobs[jobid]
@@ -494,7 +515,11 @@ class Sampler:
             return ''
     #---------------------------------------------------------------------------
     def sample_offline(self):
-        shutil.rmtree('offline')
+        """
+        Check remote directory '~/data/jobmonitor/running for data on running jobs.
+        Copy them to the local directory ./offline/running
+        """
+        shutil.rmtree('offline/running')
         os.makedirs('offline/running'  ,exist_ok=True)
         #os.makedirs('offline/completed',exist_ok=True)
         timestamp = self.get_remote_timestamp()
@@ -522,9 +547,7 @@ class Sampler:
             job = pickle.load(open('offline/running/'+filename,'rb'))
             self.add_offline_job(job)
             self.n_entries += 1
-
         self.overviews[timestamp] = self.overview_list2str(self.overviews[timestamp])
-
     #---------------------------------------------------------------------------
     def timestamp(self,i=-1):
         return self.timestamps[i]
