@@ -39,6 +39,7 @@ class JobHistory:
         if not self.job.address:
             self.address = address_of(self.job.username)
         text = self.address
+        text += '\nOverall efficiency '+job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
         assert isinstance(text,str)
         for i,timestamp in enumerate(self.job.timestamps()):
             text += '\n### '+timestamp+' '+(59*'#')
@@ -209,13 +210,13 @@ class Finished(QtGui.QMainWindow):
                 lineno = self.overview_lines.index(overview_line)
                 print(lineno)
                 job = jobh.job
-                overview_line += ' [warnings={}/{}, C*wall/cput={}, N|C= {}|{}, modules={}]' \
+                overview_line += ' warnings={}/{}' \
                                  .format( job.nsamples_with_warnings
                                         , job.nsamples()
-                                        , job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
-                                        , job.samples[job.last_timestamp].get_nnodes()
-                                        , job.samples[job.last_timestamp].get_ncores()
-                                        , job.jobscript.loaded_modules()
+#                                         , job.samples[job.last_timestamp].cputime_walltime_ratio_as_str()
+#                                         , job.samples[job.last_timestamp].get_nnodes()
+#                                         , job.samples[job.last_timestamp].get_ncores()
+#                                         , job.jobscript.loaded_modules()
                                         )
                 self.overview_lines[lineno] = overview_line
                 self.show_overview()
