@@ -308,7 +308,7 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline',action='store_true')
-    parser.add_argument('--folder' ,action='store',type=str)
+    parser.add_argument('--folder' ,action='store',type=str,default=Finished.default_local_folder)
     args = parser.parse_args()
     print('Finished.py: command line arguments:',args)
     finished = Finished(verbose = args.verbose

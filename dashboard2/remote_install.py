@@ -4,7 +4,6 @@ This python (3.5) script copies the job monitor to the remote location ~/data/jo
 """
 
 import remote
-from time import sleep
 import glob
 
 #===============================================================================

@@ -131,11 +131,11 @@ class JobSample:
             corrected_effic = round(self.effic*total_ncores_in_use/ncores_mhost,2)
             # if it is ok, we assume that it is also ok on the slqve nodes (but we are not sure)
             self.effic = corrected_effic
-            try:
-                overall_effic = self.overall_efficiency()
-                self.effic = overall_effic
-            except Exception:
-                pass
+#             try:
+#                 overall_effic = round(self.overall_efficiency(),2)
+#                 self.effic = overall_effic
+#             except Exception:
+#                 pass
         self.details = ''       
     #---------------------------------------------------------------------------
     def check_for_issues(self):
@@ -226,7 +226,7 @@ class JobSample:
         self.details += title_line('Script',width=100,char='-') 
         for line in self.parent_job.jobscript.clean:
             self.details += line+'\n'
-        self.details += title_line(width=100)
+        self.details += title_line(width=100,char='-')
             
         return self.details
     #---------------------------------------------------------------------------        
@@ -238,22 +238,22 @@ class JobSample:
         walltime = hhmmss2s( self.data_qstat.data['resources_used']['walltime'] )
         cputime  = hhmmss2s( self.data_qstat.data['resources_used']['cput'] )
         ncores   = self.get_ncores()
-        ratio = cputime/(ncores*walltime)
-        if ratio > 1:
-            if ratio > 1.05:
-                print('WARNING: overall efficiency > 1.0 :',ratio)
-            ratio = 1.0
-        return ratio
+        effic = 100*cputime/(ncores*walltime)
+        if effic > 100:
+            if effic > 105:
+                print('WARNING: overall efficiency > 100 :',effic)
+            effic = 100
+        return effic
     #---------------------------------------------------------------------------
     def overall_efficiency_as_str(self,):
         """
         should be close to one for well-performing jobs.
         """
         try:
-            ratio = self.overall_efficiency()
-            s = '{:4.2f}'.format(ratio)
+            effic = self.overall_efficiency()
+            s = '{:5.2f} %'.format(effic)
         except KeyError:
-            s = '?.??'
+            s = '?'
         return s
     #---------------------------------------------------------------------------
     def get_ncores(self):        
@@ -441,7 +441,7 @@ class Sampler:
             if os.path.exists('running/timestamp'):
                 os.remove('running/timestamp') 
             #   if ths file is absent ojm is sampling. 
-            print(title_line(timestamp, width=100, above=True, below=True),end='')
+            print(title_line(timestamp, char='=', width=100, above=True, below=True),end='')
             
         # loop over the running jobs (job_entries) 
         overview = [] # one warning per job with issues, jobs without issues are skipped
@@ -509,7 +509,7 @@ class Sampler:
             printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
             for line in overview:
                 print(line,end='')
-            print()
+            print('\nWell performing jobs: {}/{}'.format(self.n_entries-len(overview),self.n_entries))
         else:
             dlg.setValue(self.n_entries)
             QApplication.processEvents()

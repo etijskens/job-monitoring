@@ -7,7 +7,8 @@ Cfg.offline = True
 
 import os,time
 
-from showq import Sampler
+from showq      import Sampler
+from titleline  import title_line
 
 #===============================================================================
 if __name__=="__main__":
@@ -20,7 +21,8 @@ if __name__=="__main__":
         f.write('running')
     assert os.path.exists('ojm.running')
     
-    print('-- off-line job monitor started --')
+    print('\n'+title_line(                               char='=',width=100))
+    print(     title_line('off-line job monitor started',char='=',width=100))
     stopped = False
     while not stopped: 
         timestamp = sampler.sample(verbose=verbose)
