@@ -206,7 +206,7 @@ class JobSample:
         self.details += '\nwalltime used/remaining: {} / {}'.format( self.data_qstat.get_walltime_used()
                                                                    , self.data_qstat.get_walltime_remaining()
                                                                    )
-        self.details += '\nmemory   used/requested: {} / {}'.format( round(self.data_qstat.get_mem_used()     ,3)
+        self.details += '\nmem [GB] used/requested: {} / {}'.format( round(self.data_qstat.get_mem_used()     ,3)
                                                                    , round(self.data_qstat.get_mem_requested(),3) )
         hdr = 'nodes and cores used: '
         nohdr = len(hdr)*' '
@@ -229,6 +229,27 @@ class JobSample:
         self.details += title_line(width=100,char='-')
             
         return self.details
+    #---------------------------------------------------------------------------        
+    def walltime(self,hours=False):
+        try:
+            wt = self.data_qstat.data['resources_used']['walltime']
+            if hours:
+                wt = '{:.2f} hrs'.format( hhmmss2s(wt)/3600 )
+        except KeyError:
+            if hours:
+                wt = '? hrs'
+            else:
+                wt = '??:??:??'
+        return wt
+    #---------------------------------------------------------------------------        
+    def nodedays(self,):
+        try:
+            wt = self.data_qstat.data['resources_used']['walltime']
+            nd = hhmmss2s(wt)*self.get_nnodes()/(3600*24)
+            nd = '{:.3f} node days'.format(nd)
+        except KeyError:
+            nd = '??:??:??'
+        return nd
     #---------------------------------------------------------------------------        
     def overall_efficiency(self):
         """

@@ -2,14 +2,14 @@
 Main program for job monitoring of finished jobss
 """
 from PyQt4 import QtGui,uic
-import sys,os,argparse,glob
-from _pickle import load
+import sys,os,argparse,glob,shutil
+import pickle
 
 from mail import address_of
 from ignoresignals import IgnoreSignals
 import remote
 from titleline import title_line
-from pyasn1.type import char
+from mycollections import od_first, od_last
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -34,21 +34,33 @@ class JobHistory:
     """
     """
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,job):
-        self.job = job
+    def __init__(self,filepath):
+        file = open(filepath,'rb')
+        self.job = pickle.load(file)
+        self.filepath = filepath
         self.timestamp_begin = []
         line = 1
         self.address = self.job.address
         if not self.job.address:
             self.address = address_of(self.job.username)
-        text = self.address
-        text += '\nOverall efficiency: '+job.samples[job.last_timestamp].overall_efficiency_as_str()
-        text += '\nOverall memory use: {} GB\n'.format(round(job.overall_memory_used(),3))
+        text = self.address +'\n'
+        text += 'Overall efficiency: '+self.job.samples[self.job.last_timestamp].overall_efficiency_as_str()+'\n'
+        text += 'Overall memory use: {} GB\n'.format(round(self.job.overall_memory_used(),3))
+        sample = od_first(self.job.samples)[1] 
+        nnodes = sample.get_nnodes()
+        ncores = sample.get_ncores()
+        text += '       nodes|cores: {}|{}\n'.format(nnodes,ncores)
+        walltime = od_last(self.job.samples)[1].walltime(hours=True)
+        nodedays = od_last(self.job.samples)[1].nodedays()
+        text += 'walltime, nodedays: {}, {}\n'.format(walltime,nodedays)        
         for i,timestamp in enumerate(self.job.timestamps()):
             text += '\n'+title_line(          char='=',width=100) \
                         +title_line(timestamp,char='=',width=100)
             self.timestamp_begin.append(line)
-            timestamp_details = job.get_details(timestamp)+'\n'
+            timestamp_details = self.job.get_details(timestamp)
+            if not timestamp_details:
+                timestamp_details = '... no issues here ...'
+            timestamp_details += '\n'
             if i>0: # remove the script, it already appears in the first sample.
                 pos = timestamp_details.find('--- Script')
                 if pos > -1:
@@ -71,7 +83,8 @@ class Finished(QtGui.QMainWindow):
                      ,offline=False
                      ,folder ='offline/completed/'
                      ):
-        """"""
+        """
+        """
         super(Finished, self).__init__()
         self.ui = uic.loadUi('finished.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
@@ -85,13 +98,19 @@ class Finished(QtGui.QMainWindow):
         self.fetch_remote = (self.local_folder==Finished.default_local_folder)
         
         self.ignore_signals = False
-        self.current_job = None
+        self.current_jobh = None
         
         font = QtGui.QFont()
         font.setFamily('Monaco')
         font.setPointSize(11)
         self.ui.qwOverview.setFont(font)
         self.ui.qwDetails .setFont(font)
+
+        if self.analyze_offline_data:
+            os.makedirs(Finished.default_local_folder,exist_ok=True)
+            os.makedirs(self.local_folder            ,exist_ok=True)
+            os.makedirs(os.path.join(self.local_folder,'issues'    ),exist_ok=True)
+            os.makedirs(os.path.join(self.local_folder,'non_issues'),exist_ok=True)
 
         self.get_file_list()
         
@@ -103,7 +122,6 @@ class Finished(QtGui.QMainWindow):
         self.map_filename_job = {}
         pattern = '*.pickled'
         if self.analyze_offline_data:
-            os.makedirs(self.local_folder,exist_ok=True)
             # list files that are already local
             filenames_local = glob.glob(os.path.join(self.local_folder,pattern))
             self.n_entries = len(filenames_local)            
@@ -173,11 +191,13 @@ class Finished(QtGui.QMainWindow):
         self.overview_lines.sort(key=sort_key,reverse=self.ui.qwOverviewReverse.isChecked())
         self.show_overview()
     #---------------------------------------------------------------------------------------------------------         
-    def show_overview(self):
+    def show_overview(self,select_lineno=0):
         """"""
         text = '\n'
         text+= '\n'.join(self.overview_lines)
         self.ui.qwOverview.setPlainText(text)
+        if select_lineno != 0:
+            self.overview_move_cursor_to(select_lineno)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
         """"""
@@ -187,51 +207,66 @@ class Finished(QtGui.QMainWindow):
 #         print('on_qwOverview_cursorPositionChanged')
         cursor = self.ui.qwOverview.textCursor()
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
-        pickled = cursor.selectedText()
+        overview_line = cursor.selectedText()
         with IgnoreSignals(self):
             self.ui.qwOverview.setTextCursor(cursor)
-        print('selected:',pickled)
-        self.show_details(pickled)
+        print('selected:',overview_line)
+        filename = overview_line.split(' ',1)[0]
+        self.show_details(filename)
     #---------------------------------------------------------------------------------------------------------
     def overview_move_cursor_to(self,lineno):
         """
         """
         cursor = self.ui.qwOverview.textCursor()
-        i = 0
-        while i<=lineno:
+        for i in range(lineno):
             cursor.movePosition(QtGui.QTextCursor.Down)
-            i+=1
+            
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
+        self.overview_lineno = lineno
         with IgnoreSignals(self):
             self.ui.qwOverview.setTextCursor(cursor)                    
     #---------------------------------------------------------------------------------------------------------
+    def append_to_overview_line(self,filename,s):
+        """
+        append string s to the overview line that corresponds to filename
+        """
+        if s:
+            for i in range(len(self.overview_lines)):
+                if self.overview_lines[i].startswith(filename):
+                    line = self.overview_lines[i]
+                    if not s[0]==' ':
+                        line += ' '
+                    line += s
+                    self.overview_lines[i] = line
+                    self.show_overview(select_lineno=i+1) # first line is empty       
+                    break
+    #---------------------------------------------------------------------------------------------------------
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------             
-    def show_details(self,overview_line):
+    def show_details(self,filename):
         """"""
-        if overview_line:
-            filename = overview_line.split(' ',1)[0]
+        if filename:
             jobh = self.map_filename_job[filename]
             if jobh is None:
-                file = open(os.path.join(self.local_folder,filename),'rb')
-                jobh = JobHistory(load(file))    
+                #create it from the corresponding .pickled file 
+                jobh = JobHistory( os.path.join(self.local_folder,filename) )
+                #and store it for later reference
                 self.map_filename_job[filename] = jobh
                 #augment file name in overview:
-                lineno = self.overview_lines.index(overview_line)
-                print(lineno)
                 job = jobh.job
-                overview_line += ' warnings={}/{}'.format( job.nsamples_with_warnings, job.nsamples() )
-                self.overview_lines[lineno] = overview_line
-                self.show_overview()
-                self.overview_move_cursor_to(lineno)
+                extra = ' warnings={}/{}, {}'.format( job.nsamples_with_warnings, job.nsamples()
+                                                    , job.jobscript.loaded_modules(short=True) )
+                self.append_to_overview_line(filename,extra)
             else:
                 jobh.current_timestamp = 0
                 
             self.ui.qwDetailsJobid.setText(jobh.job.username+' '+jobh.job.jobid)
             self.ui.qwDetails.setPlainText(jobh.details)
-            self.current_job = jobh # used by move_details
+            self.current_jobh = jobh # used by move_details
             self.ui.qwDetailsNSamples.setText('{} / {}'.format(1,jobh.job.nsamples()))
             self.ui.qwDetailsTimestamp.setText(jobh.job.timestamps()[0])
+        else:
+            self.current_jobh = None
     #---------------------------------------------------------------------------------------------------------
     def on_qwDetailsFirst_pressed(self):
         print('on_qwDetailsFirst_pressed')
@@ -260,19 +295,19 @@ class Finished(QtGui.QMainWindow):
     def move_details(self,index=None,delta=None):
         i = index
         if delta:
-            i = self.current_job.current_timestamp + delta
+            i = self.current_jobh.current_timestamp + delta
             # make sure index i is in the valid range.
             i = max(0,i)
-            i = min(i,self.current_job.job.nsamples()-1)
-        self.current_job.current_timestamp = i
-        nsamples = self.current_job.job.nsamples()
+            i = min(i,self.current_jobh.job.nsamples()-1)
+        self.current_jobh.current_timestamp = i
+        nsamples = self.current_jobh.job.nsamples()
         if i > -1:
             j = i+1
         else:
             j=nsamples
         self.ui.qwDetailsNSamples.setText('{} / {}'.format(j,nsamples))
-        self.ui.qwDetailsTimestamp.setText(self.current_job.job.timestamps()[i])
-        line = self.current_job.timestamp_begin[i]
+        self.ui.qwDetailsTimestamp.setText(self.current_jobh.job.timestamps()[i])
+        line = self.current_jobh.timestamp_begin[i]
         cursor = self.ui.qwDetails.textCursor()
         current_block = cursor.blockNumber()
         nlines_to_move = line - current_block
@@ -292,12 +327,39 @@ class Finished(QtGui.QMainWindow):
         """
         copy the email address of the user of the current job to the clipboard
         """
-        if self.current_job is None:
+        if self.current_jobh is None:
             return
         address = address_of(self.username)
         print(address)
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)
+    #---------------------------------------------------------------------------------------------------------
+    def on_qwArchiveToNonIssues_pressed(self):
+        """
+        Archive the selected job to './offline/non_issues'.
+        We will probably never look at it again  
+        """
+        self.archive_current_job('non_issues')
+    #---------------------------------------------------------------------------------------------------------
+    def on_qwArchiveToIssues_pressed(self):
+        """
+        Archive the selected job to './offline/issues'
+        We might revisit this one to study the problem further.   
+        """
+        self.archive_current_job('issues')
+    #---------------------------------------------------------------------------------------------------------
+    def archive_current_job(self,archive):
+        """"""
+        if not self.current_jobh is None:
+            dest = list(os.path.split(self.current_jobh.filepath))
+            filename = dest[-1]
+            dest.insert(-1,archive)
+            dest = os.path.join(*dest)
+            print('Archived:',self.current_jobh.filepath,'>',dest)
+            shutil.move(self.current_jobh.filepath,dest)
+            self.current_jobh.filepath = dest
+            self.append_to_overview_line(filename,' archived > '+archive)
+
     #---------------------------------------------------------------------------------------------------------
 
 if __name__=='__main__':

@@ -99,7 +99,7 @@ class Data_jobscript:
         return s[:-1]
     
     #---------------------------------------------------------------------------    
-    def loaded_modules(self):
+    def loaded_modules(self,short=False):
         if not hasattr(self,'modules'):
             self.modules = None
         if self.modules is None:
@@ -109,7 +109,20 @@ class Data_jobscript:
                 if len(words)>2:
                     if words[0]=='module' and words[1] in ['load','add']:
                         self.modules.append(words[2])
-        return self.modules    
+        if not short:
+            return self.modules    
+        else:
+            modules = list(self.modules) # make a copy
+            for m in reversed(modules):
+                # remove 'directory' modules
+                if m.startswith('hopper'):
+                    modules.remove(m)
+                    continue
+                # keep only the name of the module and not the version info
+                if '/' in m:
+                    i = modules.index(m)
+                    modules[i] = m.split('/',1)[0]
+            return modules
     #---------------------------------------------------------------------------    
     def isempty(self):
         return len(self.clean)==0

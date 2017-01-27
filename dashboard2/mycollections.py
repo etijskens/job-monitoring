@@ -27,6 +27,16 @@ def od_last(ordered_dict):
     assert isinstance(ordered_dict,OrderedDict)
     k=next(reversed(ordered_dict))
     return (k,ordered_dict[k])
+#===============================================================================
+def od_first(ordered_dict):
+    """
+    Get the last (key,value) pair of an OrderedDict object.
+    (apparently, this is the most efficient version, because OrderedDict is 
+    implemented as a double linked list) 
+    """
+    assert isinstance(ordered_dict,OrderedDict)
+    k=next(iter(ordered_dict))
+    return (k,ordered_dict[k])
 
 #===============================================================================
 # This class is still here for backward compatibility
