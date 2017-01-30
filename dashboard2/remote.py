@@ -94,7 +94,19 @@ class CommandBase:
         else:
             return self.sout.split('\n')
     #---------------------------------------------------------------------------
+    def maximum_wait_time(self,attempts=6,wait=60):
+        return ( 2**(attempts-1) -1 )*wait
+    #---------------------------------------------------------------------------
     def execute_repeat(self,attempts=6,wait=60,post_process=True,xml=False):
+        """
+        If the command fails, retry it after <wait> seconds. The total number 
+        of attempts is <attempts>. After every attempt, the wait time is doubled.
+        0,1,2,4, 8,16
+        0,1,3,7,15,31 
+        The maximum wait time is ( 2**(attempts-1) -1 )*wait.
+        The default retries times, waiting at most 31 minutes. (This does not 
+        include time the command is executing).
+        """
         attempts_left = attempts
         sleep_time = wait
         slept_time = 0
@@ -164,31 +176,6 @@ class Command(CommandBase):
         if post_process:
             return self.post_process(xml)
     #---------------------------------------------------------------------------
-#     def execute_repeat(self,attempts=6,wait=60,post_process=True,xml=False):
-#         attempts_left = attempts
-#         sleep_time = wait
-#         slept_time = 0
-#         while attempts_left:
-#             try:
-#                 result = self.execute(post_process,xml)
-#                 if slept_time:
-#                     err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left,attempts,slept_time))
-#                 return result
-#             except Exception as e:
-#                 attempts_left -= 1
-#                 err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts))
-#                 err_print(e)
-#                 err_print('Retrying after',sleep_time,'seconds.')
-#                 sleep(wait)
-#                 slept_time += sleep_time 
-#                 sleep_time *=2
-#         else:
-#             assert attempts_left==0
-#             err_print('Exhausted after {} attempts.'.format(attempts))
-#             return None
-#         assert False # should never happen
-    #---------------------------------------------------------------------------
-#===============================================================================    
 
 #===============================================================================    
 class RemoteCommand(CommandBase):
@@ -220,10 +207,33 @@ class RemoteCommand(CommandBase):
                 raise Stderr(self.serr)
         if post_process:
             return self.post_process(xml)
-#===============================================================================    
+    #---------------------------------------------------------------------------
 
 #===============================================================================    
-def run_remote( command, connection=the_connection ):
+def run_remote(command, connection=the_connection,attempts=6,wait=60):
+    """
+    rather dirty wrapper around the Command
+    """
+    is_xml = ('qstat -x' in command) or ('--xml' in command)
+
+    if Cfg.offline:
+        # we are running on a login node, so we can execute the command using 
+        # subprocess.Popen
+        Cmd = Command
+    else:
+        # we are running on local machine and must use a paramiko client to 
+        # execute the command on a login node.
+        Cmd = RemoteCommand
+    
+    cmd = Cmd(command)
+    try:
+        return cmd.execute_repeat(attempts=attempts,wait=wait,post_process=True,xml=is_xml)
+    except:
+        return None
+    #---------------------------------------------------------------------------
+
+#===============================================================================    
+def run_remote0( command, connection=the_connection ):
     is_xml = ('qstat -x' in command) or ('--xml' in command)
 
     if Cfg.offline:
@@ -312,7 +322,7 @@ if __name__=='__main__':
         result = cmd.execute()
     except Exception as e:
         err_print(e)
-    result = cmd.execute_repeat(attempts=5, wait=10)
+    result = cmd.execute_repeat(attempts=6, wait=1) 
     print(result)
     
     cmd = RemoteCommand('cd data/jobmonitor/ ; ls')
