@@ -25,7 +25,7 @@ def run_showq():
     remove the job entries whose mhost is unknown 
     remove worker job entries
     """
-    data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.pp_xml)
+    data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
     job_entries = data_showq['Data']['queue']['job']
     # remove jobs
     #  . which have no mhost set
@@ -590,7 +590,7 @@ class Sampler:
         returns an empty string. 
         """
         try:
-            lines = remote.run('cd data/jobmonitor/running/; cat timestamp',remote.pp_lines)
+            lines = remote.run('cd data/jobmonitor/running/; cat timestamp',remote.list_of_lines)
             return lines[0]
         except:
             return ''

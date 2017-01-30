@@ -15,6 +15,7 @@ def err_print(*args):
         s+=str(arg)
     s+='\n'
     sys.stderr.write(s)
+    return s
 #===============================================================================    
 class Connection:
     """
@@ -90,10 +91,14 @@ def list_of_lines(s):
     """
     return s.split('\n')
 #===============================================================================
+
+#===============================================================================
 class CommandBase:
     """
     Base class for Command and LocalCommand
     """
+    last_error_messages = ''
+    #---------------------------------------------------------------------------
     def __init__(self):
         """"""
         self.sout = None # command output on stdout
@@ -115,24 +120,27 @@ class CommandBase:
         attempts_left = attempts
         sleep_time = wait
         slept_time = 0
+        CommandBase.last_error_messages = ''
         while attempts_left:
             try:
                 result = self.execute(post_processor)
                 if slept_time:
-                    err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left+    1,attempts,slept_time))
+                    CommandBase.last_error_messages \
+                        += err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left+1,attempts,slept_time))
                 return result
             except Exception as e:
                 attempts_left -= 1
-                err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts))
-                err_print(type(e),e)
-                err_print('Retrying after',sleep_time,'seconds.')
+                CommandBase.last_error_messages += err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts))
+                CommandBase.last_error_messages += err_print(type(e),e)
+                CommandBase.last_error_messages += err_print('Retrying after',sleep_time,'seconds.')
                 sleep(wait)
                 slept_time += sleep_time 
                 sleep_time *=2
         else:
             assert attempts_left==0
-            err_print('Exhausted after {} attempts.'.format(attempts))
+            CommandBase.last_error_messages += err_print('Exhausted after {} attempts.'.format(attempts))
             return None
+        
         assert False # should never happen
     #---------------------------------------------------------------------------
     def str(self):
@@ -236,7 +244,7 @@ def run(command, connection=the_connection,attempts=6,wait=60,post_processor=Non
     cmd = Cmd(command)
     try:
         return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor)
-    except:
+    except Exception as e:
         return None
     #---------------------------------------------------------------------------
 
@@ -276,7 +284,7 @@ if __name__=='__main__':
     cmd = Command('ls')
     result = cmd.execute()
     print(result)
-    result = cmd.execute(post_processor=pp_lines)
+    result = cmd.execute(post_processor=list_of_lines)
     print(cmd.str(),result)
 
     cmd = Command('cat test')
@@ -284,7 +292,7 @@ if __name__=='__main__':
         result = cmd.execute()
     except Exception as e:
         err_print(e)
-    result = cmd.execute_repeat(attempts=6, wait=1,post_processor=pp_lines) 
+    result = cmd.execute_repeat(attempts=6, wait=1,post_processor=list_of_lines) 
     print(result)
     
     cmd = RemoteCommand('cd data/jobmonitor/ ; ls')

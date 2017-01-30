@@ -28,3 +28,5 @@ dashboard2/*.xml
 dashboard2/ojm.pid
 dashboard2/logindetails.py
 dashboard2/connect.py
+
+dashboard2/connect.py

@@ -63,7 +63,7 @@ class Data_jobscript:
                         ]
         else:
             try:
-                self.data = remote.run(command,post_processor=remote.pp_lines)
+                self.data = remote.run(command,post_processor=remote.list_of_lines)
             except Exception as e:
                 s = str(e)
                 if 'No such file or directory' in s:
@@ -133,10 +133,7 @@ class Data_jobscript:
 # test code below
 ################################################################################
 if __name__=="__main__":
-    try:
-        import connect_me
-    except:
-        _test = True
+    _test = True
     
     js = Data_jobscript('r3c1cn01','384038')
     print(js.data)

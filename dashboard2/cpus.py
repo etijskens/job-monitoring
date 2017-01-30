@@ -36,7 +36,7 @@ def list_cores(compute_node,jobid):
     return a list with the cores used by job ``jobid`` on compute node ``compute_node``.
     """
     lines = remote.run('ssh {} cat /dev/cpuset/torque/{}.hopper/cpus'.format(compute_node,jobid)
-                      , post_processor=remote.pp_lines
+                      , post_processor=remote.list_of_lines
                       )
     if lines is None:
         cpus = []
@@ -53,7 +53,7 @@ def run_sar_P(compute_node,cores=None):
         :returns: list with the relevant output lines
     """
     command = "ssh {} sar -P ALL 1 1".format(compute_node)
-    lines = remote.run(command,post_processor=remote.pp_lines)
+    lines = remote.run(command,post_processor=remote.list_of_lines)
     if lines is None:
         lines = ['command failed: '+command]
     # remove lines not containing 'Average:'
