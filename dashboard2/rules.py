@@ -1,6 +1,5 @@
 from constants import cluster_properties, current_cluster
 
-
 #===============================================================================    
 class Rule:
     def __init__(self,ignore_in_job_details=False,severity=1):

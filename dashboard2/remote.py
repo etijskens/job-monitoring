@@ -3,7 +3,7 @@ import xmltodict
 import shlex,sys
 from time import sleep
 
-import connect
+import logindetails
 from cfg import Cfg
 from constants import current_cluster,cluster_properties
 
@@ -59,7 +59,7 @@ if Cfg.offline:
     the_connection = 'off-line'
 else:
 #     the_connection = 'off-line'
-    the_connection = Connection( *connect.me )
+    the_connection = Connection( *logindetails.me )
 #===============================================================================
 
 #===============================================================================
@@ -75,29 +75,34 @@ class Stderr(Exception):
     """
     pass
 #===============================================================================
-
+def xml_to_odict(s):
+    """
+    post processor function for xml output of a command using xmltodict
+    :returns: an OrderedDict object
+    """
+    return xmltodict.parse(s)
+#===============================================================================
+def list_of_lines(s):
+    """
+    post processor function. splits the output of a command in a list of lines
+    (newlines are removed).
+    :returns: a list of lines (str)
+    """
+    return s.split('\n')
 #===============================================================================
 class CommandBase:
     """
     Base class for Command and LocalCommand
     """
-    def __init__(self,command):
+    def __init__(self):
         """"""
-        self.command = command
-        self.sout = None
-        self.serr = None
-    #---------------------------------------------------------------------------
-    def post_process(self,xml=False):
-        """"""
-        if xml:
-            return xmltodict.parse(self.sout)
-        else:
-            return self.sout.split('\n')
+        self.sout = None # command output on stdout
+        self.serr = None # command output on stderr
     #---------------------------------------------------------------------------
     def maximum_wait_time(self,attempts=6,wait=60):
         return ( 2**(attempts-1) -1 )*wait
     #---------------------------------------------------------------------------
-    def execute_repeat(self,attempts=6,wait=60,post_process=True,xml=False):
+    def execute_repeat(self,attempts=6,wait=60,post_processor=None):
         """
         If the command fails, retry it after <wait> seconds. The total number 
         of attempts is <attempts>. After every attempt, the wait time is doubled.
@@ -112,14 +117,14 @@ class CommandBase:
         slept_time = 0
         while attempts_left:
             try:
-                result = self.execute(post_process,xml)
+                result = self.execute(post_processor)
                 if slept_time:
                     err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left+    1,attempts,slept_time))
                 return result
             except Exception as e:
                 attempts_left -= 1
                 err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts))
-                err_print(e)
+                err_print(type(e),e)
                 err_print('Retrying after',sleep_time,'seconds.')
                 sleep(wait)
                 slept_time += sleep_time 
@@ -130,6 +135,12 @@ class CommandBase:
             return None
         assert False # should never happen
     #---------------------------------------------------------------------------
+    def str(self):
+        if isinstance(self.command,list):
+            return ' '.join(self.command)
+        else:
+            return self.command
+    #---------------------------------------------------------------------------
             
 #===============================================================================
 class Command(CommandBase):
@@ -137,22 +148,19 @@ class Command(CommandBase):
     command that is executed using subproces.Popen.
     """
     def __init__(self,command):
+        super(Command,self).__init__()
         if isinstance(command,str):
             self.command = shlex.split(command)
         elif isinstance(command,list):
             self.command = command
         else:
             raise TypeError('Expecting "str" or "list'".")
-        super(Command,self).__init__(command)
         if 'ssh' in self.command:
             self.timeout = 60
         else:
             self.timeout = 5
     #---------------------------------------------------------------------------
-    def str(self):
-        return ' '.join(self.command)
-    #---------------------------------------------------------------------------
-    def execute(self,post_process=True,xml=False):
+    def execute(self,post_processor=None):
         """
         raises 
             subprocess.TimeoutExpired if the command does not complete in time
@@ -173,8 +181,10 @@ class Command(CommandBase):
                 raise Stderr(self.serr)
         else:
             self.sout = self.sout.decode('utf-8')
-        if post_process:
-            return self.post_process(xml)
+        if post_processor:
+            return post_processor(self.sout)
+        else:
+            return self.sout
     #---------------------------------------------------------------------------
 
 #===============================================================================    
@@ -183,15 +193,13 @@ class RemoteCommand(CommandBase):
     Command that is executed remotely (on a login-node) using paramiko.client.
     """                
     def __init__(self,command):
-        super(RemoteCommand,self).__init__(command)
+        super(RemoteCommand,self).__init__()
+        self.command = command
         is_Connection = isinstance(the_connection,Connection)
         if not is_Connection or ( is_Connection and not the_connection.is_connected() ):
             raise Exception("not connected")
     #---------------------------------------------------------------------------
-    def str(self):
-        return self.command
-    #---------------------------------------------------------------------------
-    def execute(self,post_process=True,xml=False):
+    def execute(self,post_processor=None):
         """
         raises 
             subprocess.TimeoutExpired if the command does not complete in time
@@ -205,17 +213,17 @@ class RemoteCommand(CommandBase):
             self.serr = tpl[2].read().decode('utf-8')
             if self.serr:
                 raise Stderr(self.serr)
-        if post_process:
-            return self.post_process(xml)
+        if post_processor:
+            return post_processor(self.sout)
+        else:
+            return self.sout
     #---------------------------------------------------------------------------
-
+    
 #===============================================================================    
-def run_remote(command, connection=the_connection,attempts=6,wait=60):
+def run(command, connection=the_connection,attempts=6,wait=60,post_processor=None):
     """
     rather dirty wrapper around the Command
     """
-    is_xml = ('qstat -x' in command) or ('--xml' in command)
-
     if Cfg.offline:
         # we are running on a login node, so we can execute the command using 
         # subprocess.Popen
@@ -227,58 +235,12 @@ def run_remote(command, connection=the_connection,attempts=6,wait=60):
     
     cmd = Cmd(command)
     try:
-        return cmd.execute_repeat(attempts=attempts,wait=wait,post_process=True,xml=is_xml)
+        return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor)
     except:
         return None
     #---------------------------------------------------------------------------
 
 #===============================================================================    
-def run_remote0( command, connection=the_connection ):
-    is_xml = ('qstat -x' in command) or ('--xml' in command)
-
-    if Cfg.offline:
-        # we are running the offline job monitor on a login node.
-        command = shlex.split(command)
-        proc = subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        if 'ssh' in command:
-            timeout = 60
-        else:
-            timeout = 5
-        try:
-            sout, serr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            print('expired')
-            proc.kill()
-            sout, serr = proc.communicate()
-        if not sout:
-            serr = serr.decode('utf-8')
-            if serr:
-                print('!!!',serr)
-                print('!!!',' '.join(command))
-                raise Exception(serr)
-        else:
-            sout = sout.decode('utf-8')
-    else:
-        if not connection.is_connected():
-            raise Exception("not connected")
-        
-        tpl = connection.paramiko_client.exec_command(command)
-            
-        sout = tpl[1].read().decode('utf-8')
-        if not sout:
-            serr = tpl[2].read().decode('utf-8')
-            if serr:
-                print('!!!',serr)
-                print('!!!',command)
-                raise Exception(serr)
-
-    if is_xml:
-        xml_dict = xmltodict.parse(sout) 
-        return xml_dict
-    else:
-        lines = sout.split('\n')
-        return lines
-#===============================================================================
 def glob(pattern,path=None):
     """
     a remote glob
@@ -314,15 +276,15 @@ if __name__=='__main__':
     cmd = Command('ls')
     result = cmd.execute()
     print(result)
-    result = cmd.execute(post_process=False)
-    print(cmd.str(),cmd.sout)
+    result = cmd.execute(post_processor=pp_lines)
+    print(cmd.str(),result)
 
     cmd = Command('cat test')
     try:
         result = cmd.execute()
     except Exception as e:
         err_print(e)
-    result = cmd.execute_repeat(attempts=6, wait=1) 
+    result = cmd.execute_repeat(attempts=6, wait=1,post_processor=pp_lines) 
     print(result)
     
     cmd = RemoteCommand('cd data/jobmonitor/ ; ls')

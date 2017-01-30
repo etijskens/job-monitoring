@@ -25,7 +25,7 @@ def run_showq():
     remove the job entries whose mhost is unknown 
     remove worker job entries
     """
-    data_showq = remote.run_remote("showq -r -p hopper --xml" )
+    data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.pp_xml)
     job_entries = data_showq['Data']['queue']['job']
     # remove jobs
     #  . which have no mhost set
@@ -55,7 +55,35 @@ def run_showq():
 class ShowqJobEntry:
     #---------------------------------------------------------------------------    
     def __init__(self,job_entry):
+        """
+        typical job entry (in xml)
+        <job 
+            AWDuration="192260" 
+            Class="q7d" 
+            DRMJID="393684.hopper" 
+            EEDuration="106250" 
+            GJID="393684" 
+            Group="vsc20213" 
+            JobID="393684" 
+            JobName="H2Diss-slabal2o3_MoO3" 
+            MasterHost="r3c4cn02.hopper.antwerpen.vsc" 
+            PAL="hopper" 
+            ReqAWDuration="604800" 
+            ReqProcs="160" 
+            RsvStartTime="1485577392" 
+            RunPriority="4970" 
+            StartPriority="4970" 
+            StartTime="1485577392" 
+            StatPSDed="30761912.000000" 
+            StatPSUtl="3691030.208000" 
+            State="Running" 
+            SubmissionTime="1485471138" 
+            SuspendDuration="0" 
+            User="vsc20213"
+        ></job>
+        """
         self.data = job_entry # OrderedDict
+        
     #---------------------------------------------------------------------------    
     def get_jobid_long(self):
         jobid = self.data['@DRMJID']
@@ -69,18 +97,45 @@ class ShowqJobEntry:
         state = self.data['@State']
         return state
     #---------------------------------------------------------------------------    
-    def get_effic(self):
+    def get_effic(self,mhost_cores=None):
         """
-        return uncorrected efficiciency
+        Return the (uncorrected) efficiciency. 
+        According to the Adaptive Computing developers:
+        "For active jobs Moab reads in the "resources_used.cput" from Torque and 
+        divides that by the total processor seconds dedicated to the job. This 
+        is the efficiency of the job. Note that this can be a delayed statistic 
+        coming from torque so EFFIC is just an estimate until after a job has 
+        finished." 
+        The efficiency is termed uncorrected because in the current setup of hopper
+        Torque has no information from the slave nodes, and hence assumes that 
+        "resources_used.cput" is 0 for slave nodes. E.g. for a job running on 2 nodes,
+        each with 100% efficiency, Moab will report an efficiency of 50% after 100s 
+        because it is computed as:
+            total processor seconds: 100s * 2 nodes * 20 cores per node = 4000
+            resources_used.cput on master node = 100s * 20 cores per node = 2000
+            resources_used.cput on slave  node = 100s * 20 cores per node = 2000
+        but Torque sees 0s * 20 cores per node = 0s and thus reports (2000+0)/4000 = 50%
+        
+        We can scale the efficiency to the master node as 
+            50% * number_of_cores_used_by_all_nodes / number_of_cores_used_by_master_node 
+              = 50% * 40/20 = 100%
+        Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
+        and thus cannot correct the effic value, unless this value is provided as mhost_cores.
+        
+        The 'corrected' value, obviously provides only information on the master host node
+        rather than on the entire job! It is our hope that if the master node is performing 
+        well, the slave nodes do so too.
         """
         numerator   = self.data['@StatPSUtl']
         denominator = self.data['@StatPSDed']
         try:
             value = 100*float(numerator)/float(denominator) # [%]
+            if not mhost_cores is None and Cfg.correct_effic:
+                # scale the effic value to the master host node only, i.e. "correct" it.
+                value *= self.get_ncores()/mhost_cores 
         except ZeroDivisionError:
-            value = -1
-        value = round(value,2)
-        return value
+            value = 100 # seems safe
+        return round(value,2)
     #---------------------------------------------------------------------------    
     def get_username(self):
         value = self.data['@User']
@@ -95,6 +150,7 @@ class ShowqJobEntry:
     def get_ncores(self):
         value = int( self.data['@ReqProcs'] )
         return value
+    #---------------------------------------------------------------------------    
 
 #===============================================================================    
 def overview_by_user(arg):
@@ -102,6 +158,8 @@ def overview_by_user(arg):
     sort key for sorting warnings by username
     """
     return arg.split(' ',1)[1]
+    #---------------------------------------------------------------------------    
+
 #===============================================================================
 class JobSample:
     #---------------------------------------------------------------------------    
@@ -119,23 +177,8 @@ class JobSample:
         total_ncores_available = nnodes*cluster_properties[current_cluster]['ncores_per_node'] 
         self.all_cores_in_use = (total_ncores_in_use==total_ncores_available)
 
-        self.effic = job_entry.get_effic() # uncorrected
-        #   we make a copy of this because it may be corrected if torque does not
-        #   know the efficiency on the subordinate nodes.
-        if nnodes>1 and Cfg.correct_effic:
-            #if there is only one node allocated there is no need for correcting
-            ncores_mhost = len(cpu_list(self.data_qstat.node_cores[job_entry.get_mhost()]))   # number of cores used by this job on the master compute node
-            # compute the efficiency on the master node only. 
-            # Note that, if torque is not ignorant about the loads on the slave nodes, this 
-            # correction is overly optimistic.
-            corrected_effic = round(self.effic*total_ncores_in_use/ncores_mhost,2)
-            # if it is ok, we assume that it is also ok on the slqve nodes (but we are not sure)
-            self.effic = corrected_effic
-#             try:
-#                 overall_effic = round(self.overall_efficiency(),2)
-#                 self.effic = overall_effic
-#             except Exception:
-#                 pass
+        ncores_mhost = len(cpu_list(self.data_qstat.node_cores[job_entry.get_mhost()]))   # number of cores used by this job on the master compute node
+        self.effic = job_entry.get_effic(ncores_mhost) # corrected if Cfg.correct_effic==True
         self.details = ''       
     #---------------------------------------------------------------------------
     def check_for_issues(self):
@@ -547,7 +590,7 @@ class Sampler:
         returns an empty string. 
         """
         try:
-            lines = remote.run_remote('cd data/jobmonitor/running/; cat timestamp')
+            lines = remote.run('cd data/jobmonitor/running/; cat timestamp',remote.pp_lines)
             return lines[0]
         except:
             return ''

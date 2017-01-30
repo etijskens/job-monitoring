@@ -1,8 +1,9 @@
-from remote import run_remote
+import remote
 from constants import dim, normal, blue, bold, red, default
 
 _test = False
 
+#===============================================================================
 def cpu_list(s):
     """
     Convert string describing a list of cpus comprising comma-separated entries or 
@@ -27,30 +28,34 @@ def cpu_list(s):
                 cpu+=1
     cpus.sort()
     return cpus
+    #---------------------------------------------------------------------------    
 
+#===============================================================================
 def list_cores(compute_node,jobid):
     """
     return a list with the cores used by job ``jobid`` on compute node ``compute_node``.
     """
-    lines = run_remote('ssh {} cat /dev/cpuset/torque/{}.hopper/cpus'.format(compute_node,jobid))
-#     print_lines(lines)
-    cpus = cpu_list(lines[0])
+    lines = remote.run('ssh {} cat /dev/cpuset/torque/{}.hopper/cpus'.format(compute_node,jobid)
+                      , post_processor=remote.pp_lines
+                      )
+    if lines is None:
+        cpus = []
+    else:
+        cpus = cpu_list(lines[0])
     return cpus
+    #---------------------------------------------------------------------------    
         
-def run_sar_P(compute_node,cores=None,grep=False):
+#===============================================================================
+def run_sar_P(compute_node,cores=None):
     """
         :str compute_node: the compute node where you want to run 'sar -P ALL 1 1', 
         :param cores: a list of core ids on which you want information 
         :returns: list with the relevant output lines
     """
-    try:
-        if grep:
-            lines = run_remote("ssh {} sar -P ALL 1 1 | grep 'Average:'".format(compute_node))
-        else:
-            lines = run_remote("ssh {} sar -P ALL 1 1".format(compute_node))
-    except Exception as e:
-        return [ str(e) ]
-    
+    command = "ssh {} sar -P ALL 1 1".format(compute_node)
+    lines = remote.run(command,post_processor=remote.pp_lines)
+    if lines is None:
+        lines = ['command failed: '+command]
     # remove lines not containing 'Average:'
     lines_filtered = []
     for line in lines:
@@ -70,11 +75,14 @@ def run_sar_P(compute_node,cores=None,grep=False):
         for cpu in cores:
             lines_filtered.append(lines[1+cpu]) 
         return lines_filtered
+    #---------------------------------------------------------------------------    
 
+#===============================================================================
 class Data_sar:
     """
     Class for storing and manipulating the output of ``sar -P ALL 1 1`` on a compute node
     """
+    #---------------------------------------------------------------------------    
     def __init__(self,compute_node,cores=None):
         """
         """
@@ -130,17 +138,12 @@ class Data_sar:
                     self.columns[hdr].append(value) 
                 else:
                     self.columns[hdr].append(float(value)) # percentage
-#             print(self.columns)
-
-#         nrows = len(self.columns[0])-1
-#         if nrows!=1:
-#             # recompute the average
-                
+    #---------------------------------------------------------------------------    
     def get(self,column_header,core_id):
         irow = self.columns['CPU'].index(core_id)
         value = self.columns[column_header][irow]
         return value 
-    
+    #---------------------------------------------------------------------------    
     def verify_load(self,threshold):
         """
         Find cores with loads <= ``threshold``.
@@ -154,7 +157,7 @@ class Data_sar:
         else:
             self.ok = True
         return self.ok
-
+    #---------------------------------------------------------------------------    
     def message(self,fmt=False):
         """
         """
@@ -197,15 +200,16 @@ class Data_sar:
             msg = '\n'.join(self.data)
             
         return msg
+    #---------------------------------------------------------------------------    
      
-################################################################################
+#===============================================================================
 # test code below
-################################################################################
+#===============================================================================
 if __name__=="__main__":
-    try:
-        import connect_me
-    except:
-        _test = True
+#     try:
+#         import connect_me
+#     except:
+#         _test = True
 
     cpus = cpu_list('1')
     print(cpus)

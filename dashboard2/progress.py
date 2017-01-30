@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import sys
-    
 from datetime import datetime
-
 
 #==================================================================================================
 # Print iterations progress
@@ -36,6 +34,7 @@ def printProgress(iteration, total, prefix = 'Progress: ', suffix = '', decimals
     if iteration == total:
         sys.stdout.write('\n')
     sys.stdout.flush()
+    #---------------------------------------------------------------------------
 
 #==================================================================================================
 # test code below

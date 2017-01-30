@@ -26,3 +26,5 @@ dashboard2/testje.*
 dashboard2/__pycache__
 dashboard2/*.xml
 dashboard2/ojm.pid
+dashboard2/logindetails.py
+dashboard2/connect.py

@@ -1,4 +1,5 @@
-from remote import run_remote
+
+import remote
 from constants import dim, normal, bold, default, green
 
 _test = False
@@ -62,7 +63,7 @@ class Data_jobscript:
                         ]
         else:
             try:
-                self.data = run_remote(command)
+                self.data = remote.run(command,post_processor=remote.pp_lines)
             except Exception as e:
                 s = str(e)
                 if 'No such file or directory' in s:

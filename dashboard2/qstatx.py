@@ -1,4 +1,4 @@
-from remote import run_remote
+import remote
 from collections import OrderedDict
 from constants import str2gb
 from cpus import cpu_list, Data_sar
@@ -11,13 +11,16 @@ def run_qstat_f(jobid):
     :str jobid:  job id. 
     """
     try:
-        result = run_remote("qstat -x -f "+jobid)
+        result = remote.run("qstat -x -f "+jobid
+                           ,post_processor=remote.pp_xml
+                           )
         # the '--xml' is replaced with '-x' (qstat only understands '-x'
         # the '--xml' is used to trigger the parsing of the xml output.
     except Exception as e:
         result = OrderedDict()
         result['error'] = str(e)
     return result
+    #---------------------------------------------------------------------------
 
 #===============================================================================    
 class Data_qstat:
