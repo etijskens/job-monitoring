@@ -259,7 +259,7 @@ def glob(pattern,path=None):
         command ='ls -1 {}'.format(pattern)
         
     cmd = RemoteCommand(command)
-    lines = cmd.execute()
+    lines = cmd.execute(post_processor=list_of_lines)
     # remove trailing empty lines
     while not lines[-1]:
         lines.pop()

@@ -1,7 +1,7 @@
 """
 Main program for job monitoring of finished jobss
 """
-from PyQt4 import QtGui,uic
+from PyQt4 import QtGui,QtCore,uic
 import sys,os,argparse,glob,shutil
 import pickle
 
@@ -10,6 +10,7 @@ from ignoresignals import IgnoreSignals
 import remote
 from titleline import title_line
 from mycollections import od_first, od_last
+from cfg import Cfg
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -112,13 +113,22 @@ class Finished(QtGui.QMainWindow):
             os.makedirs(os.path.join(self.local_folder,'issues'    ),exist_ok=True)
             os.makedirs(os.path.join(self.local_folder,'non_issues'),exist_ok=True)
 
-        self.get_file_list()
+        self.get_completed_reports()
         
         self.show()
+        
+        self.timer = QtCore.QTimer(self)
+        self.timer.setInterval(Cfg.sampling_interval*1000)
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self.get_completed_reports)
+        self.timer.start()
+    #---------------------------------------------------------------------------------------------------------
+
     #---------------------------------------------------------------------------------------------------------
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
-    def get_file_list(self):
+    def get_completed_reports(self):
+        print('Retrieving reports of completed jobs ...')
         self.map_filename_job = {}
         pattern = '*.pickled'
         if self.analyze_offline_data:
@@ -131,7 +141,7 @@ class Finished(QtGui.QMainWindow):
                 try:
                     filenames_remote = remote.glob(pattern,remote_path)
                 except Exception as e:
-                    print(e)
+                    remote.err_print(type(e),e)
                     print('Continuing with local files only...')
                     filenames_remote = []
                 for filename in filenames_remote:
@@ -142,7 +152,7 @@ class Finished(QtGui.QMainWindow):
                             print('copied')
                             filenames_local.append(self.local_folder+filename)
                         except Exception as e:
-                            print(e)
+                            remote.err_print(type(e),e)
                             continue
         else:
             self.self.local_folder  = 'completed/'
@@ -155,9 +165,10 @@ class Finished(QtGui.QMainWindow):
         self.overview_lines = list(self.map_filename_job.keys())
         if self.overview_lines:
             self.sort_overview()
+        print('Retrieving reports of completed jobs ... done')
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewRefresh_pressed(self):
-        self.get_file_list()
+        self.get_completed_reports()
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewReverse_stateChanged(self):
         print('on_qwOverviewReverse_stateChanged')
