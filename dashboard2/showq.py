@@ -590,7 +590,7 @@ class Sampler:
         returns an empty string. 
         """
         try:
-            lines = remote.run('cd data/jobmonitor/running/; cat timestamp',remote.list_of_lines)
+            lines = remote.run('cd data/jobmonitor/running/; cat timestamp',post_processor=remote.list_of_lines)
             return lines[0]
         except:
             return ''

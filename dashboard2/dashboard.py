@@ -153,7 +153,7 @@ class Dashboard(QtGui.QMainWindow):
                 jobid = ''        
             timestamp = self.qwOverviewTimestamp.text()
             self.show_details(jobid,timestamp)
-        print('selected:',jobid)
+            print('selected:',jobid)
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewFirst_pressed(self):
         print('on_qwOverviewFirst_pressed')
