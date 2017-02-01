@@ -28,6 +28,12 @@ def address_of(username):
     #-----------------------------------------------------------------------------------------------
     
 #===================================================================================================
+def print_all():
+    for username,address in the_mail_adresses.items():
+        print(username,address)
+    #-----------------------------------------------------------------------------------------------
+    
+#===================================================================================================
 def load_mail_addresses():
     try:
         mail_addresses = pickle.load( open('config/mail_addresses.pickled','rb') )
@@ -69,5 +75,5 @@ if __name__=='__main__':
     
     print(address_of('vsc20170'))
     print(address_of('vsc20170'))
-    
+    print_all()
     print('\n--finished--')

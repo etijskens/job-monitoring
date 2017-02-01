@@ -21,29 +21,34 @@ class Connection:
     """
     Class for managing a paramiko (ssh) connection to hopper
     """
+    verbose = True
     #---------------------------------------------------------------------------    
-    def __init__(self, username, ssh_key_filename, passphrase=None):
+    def __init__( self
+                , username, ssh_key_filename, passphrase=None
+                , cluster=current_cluster, login_node=0 ):
         """
         Open a connection
         """
         self.paramiko_client = None
-        
+        host = cluster_properties[cluster]['login_nodes'][login_node]
         try:
             self.paramiko_client = paramiko.client.SSHClient()
             self.paramiko_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             if passphrase:
-                self.paramiko_client.connect( hostname     = cluster_properties[current_cluster]['login_node']
+                self.paramiko_client.connect( hostname     = host
                                             , username     = username
                                             , key_filename = ssh_key_filename
                                             , passphrase   = passphrase
                                             )
             else:
-                self.paramiko_client.connect( hostname     = cluster_properties[current_cluster]['login_node']
+                self.paramiko_client.connect( hostname     = host
                                             , username     = username
                                             , key_filename = ssh_key_filename
                                             )
+            if Connection.verbose:
+                print('Successfully connected {} to {}.'.format(username,host))
         except:
-            err_print('Failed to connect',username)            
+            err_print('Failed to connect {} to {}.'.format(username,host))            
             self.paramiko_client = None
     #---------------------------------------------------------------------------    
     def is_connected(self):
@@ -56,23 +61,30 @@ class Connection:
     #---------------------------------------------------------------------------    
 
 #===============================================================================    
+def set_connection(cluster=current_cluster,login_node=0):
+    """
+    make a new paramiko connection that will be used further on in this job
+    monitoring session.
+    """
+    global the_connection
+    the_connection = Connection( *logindetails.me, cluster=cluster, login_node=login_node )
+#===============================================================================    
 if Cfg.offline:
     the_connection = 'off-line'
 else:
-#     the_connection = 'off-line'
-    the_connection = Connection( *logindetails.me )
+    set_connection()
 #===============================================================================
 
 #===============================================================================
 class NotConnected(Exception):
     """
-    This exception is raised if the no paramiko connection could be established.
+    This exception is raised if no paramiko connection could be established.
     """
     pass
 #===============================================================================
 class Stderr(Exception):
     """
-    This exception is raised if the command produced output on stderr.
+    This exception is raised if a CommandBase object produces output on stderr.
     """
     pass
 #===============================================================================

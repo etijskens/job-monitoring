@@ -1,5 +1,8 @@
 #===============================================================================    
 def hopper_mem_avail_gb(node):
+    """
+    :returns: the memory available on compute node node in GB.
+    """
     r = node[1]
     if r!='5':
         return 58
@@ -12,8 +15,8 @@ def hopper_mem_avail_gb(node):
     return 256 # r5c[1-3]cn0[1-8]
 #===============================================================================    
 cluster_properties = {'hopper':{'ncores_per_node' : 20
-                               ,'login_node'      :'login.hpc.uantwerpen.be'
-                               ,'login_nodes'     :['login1-hopper.uantwerpen.be'
+                               ,'login_nodes'     :['login.hpc.uantwerpen.be'
+                                                   ,'login1-hopper.uantwerpen.be'
                                                    ,'login2-hopper.uantwerpen.be'
                                                    ,'login3-hopper.uantwerpen.be'
                                                    ,'login4-hopper.uantwerpen.be']
@@ -23,12 +26,8 @@ cluster_properties = {'hopper':{'ncores_per_node' : 20
 #===============================================================================    
 current_cluster = list(cluster_properties.keys())[0]
 #===============================================================================    
-def fix_login_node(i):
-    assert i in range(1,5)
-    cluster_properties[current_cluster]['login_node'] = cluster_properties[current_cluster]['login_nodes'][i] 
-#===============================================================================    
 
-dashed_line = 80*'-'
+# dashed_line = 80*'-'
 
 # ascii terminal escape sequences
 bell =         '\033[\07h'
