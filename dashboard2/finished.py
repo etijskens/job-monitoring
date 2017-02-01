@@ -44,7 +44,8 @@ class JobHistory:
         self.address = self.job.address
         if not self.job.address:
             self.address = address_of(self.job.username)
-        text = self.address +'\n'
+        text = title_line('JOB MONITOR REPORT '+self.job.jobid,width=100, char='=',above=True)
+        text += '\n'+self.address+'\n'
         text += 'Overall efficiency: '+self.job.samples[self.job.last_timestamp].overall_efficiency_as_str()+'\n'
         text += 'Overall memory use: {} GB\n'.format(round(self.job.overall_memory_used(),3))
         sample = od_first(self.job.samples)[1] 
@@ -122,8 +123,11 @@ class Finished(QtGui.QMainWindow):
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.get_completed_reports)
         self.timer.start()
-    #---------------------------------------------------------------------------------------------------------
-
+        
+        ctrl_o = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+o'),self)
+        ctrl_n = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+n'),self)
+        ctrl_o.activated.connect(self.on_qwArchiveToNonIssues_pressed) 
+        ctrl_n.activated.connect(self.on_qwArchiveToIssues_pressed) 
     #---------------------------------------------------------------------------------------------------------
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
@@ -141,9 +145,13 @@ class Finished(QtGui.QMainWindow):
                 try:
                     filenames_remote = remote.glob(pattern,remote_path)
                 except Exception as e:
-                    remote.err_print(type(e),e)
-                    print('Continuing with local files only...')
+                    if isinstance(e,remote.Stderr) \
+                    and 'ls: cannot access *.pickled: No such file or directory' in str(e):
+                        print('No new reports found.')
+                    else:
+                        remote.err_print(type(e),e)
                     filenames_remote = []
+
                 for filename in filenames_remote:
                     if not self.local_folder+filename in filenames_local:
                         try:
@@ -255,6 +263,12 @@ class Finished(QtGui.QMainWindow):
                     self.overview_lines[i] = line
                     self.show_overview(select_lineno=i+1) # first line is empty       
                     break
+#     #---------------------------------------------------------------------------------------------------------
+#     def keyPressEvent(self, *args, **kwargs):
+#         e = args[0]
+#         print(e,e.key())
+# #         if e.key()==
+#         return QtGui.QMainWindow.keyPressEvent(self, *args, **kwargs)
     #---------------------------------------------------------------------------------------------------------
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------             
