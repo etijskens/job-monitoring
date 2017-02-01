@@ -148,7 +148,11 @@ class Finished(QtGui.QMainWindow):
                     if not self.local_folder+filename in filenames_local:
                         try:
                             print('copying',remote_path+filename,'to',self.local_folder,'...',end='')
-                            remote.copy_remote_to_local(self.local_folder+filename,remote_path+filename)
+                            
+                            remote.copy_remote_to_local( self.local_folder+filename
+                                                       , remote_path+filename
+                                                       , rename=remote_path+filename+'_done'
+                                                       )
                             print('copied')
                             filenames_local.append(self.local_folder+filename)
                         except Exception as e:

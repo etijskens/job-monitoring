@@ -270,10 +270,31 @@ def copy_local_to_remote(local_path,remote_path, connection=the_connection):
     sftp.put(local_path, remote_path)
     sftp.close()
 #===============================================================================
-def copy_remote_to_local(local_path,remote_path, connection=the_connection):
+def copy_remote_to_local(local_path,remote_path, connection=the_connection,rename=False):
+    """
+    Copy remote file <remote_path> to <local_path>, and optionally renames the source (to
+    prevent it from being considered again in the next round, e.g.). As the remote host is 
+    a linux machine the rename operation is actually a 'mv', hence, <rename> may have the 
+    same filename but a different directory path, in wich case the source is effectively 
+    to a different directory. 
+     
+    :rename: non-empty str: after copying the original file, it is renamed to <rename>
+             empty str    : after copying the original file, it is removed.
+             False        : after copying the original file, it is left as it was.
+    """
     sftp = connection.paramiko_client.open_sftp()
     sftp.get(remote_path,local_path)
     sftp.close()
+    if isinstance(rename,str):
+        if rename:
+            command = 'mv {} {}_done'.format(remote_path,remote_path)
+        else:
+            command = 'rm -f '+remote_path
+        cmd = RemoteCommand(command)
+        cmd.execute()
+    else:
+        if not (isinstance(rename,bool) and rename==False):
+            raise ValueError("kwarg 'rename' must be str or False, got {}.".format(rename))
 #===============================================================================
 
 #===============================================================================
