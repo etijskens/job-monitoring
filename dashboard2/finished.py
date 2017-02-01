@@ -139,6 +139,7 @@ class Finished(QtGui.QMainWindow):
             # list files that are already local
             filenames_local = glob.glob(os.path.join(self.local_folder,pattern))
             self.n_entries = len(filenames_local)            
+            print('Found {} local reports of completed jobs.'.format(self.n_entries))
             if self.fetch_remote:
                 #list filenames which are still remote:
                 remote_path = 'data/jobmonitor/completed/'

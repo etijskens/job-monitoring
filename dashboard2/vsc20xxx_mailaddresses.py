@@ -1,6 +1,9 @@
-"""
+
+""" !!! Python script (v2.7) !!! 
+
 This python script (v2.7) retrieves (username,mail_address) pairs from the ldap
 and prints a single pair per line.
+It it meant to be run on a login node.
 
 Command line arguments:
     'password': password to access the ldap
