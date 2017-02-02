@@ -1,6 +1,7 @@
 import remote
 import argparse
 import mycollections
+from constants import current_cluster
 
 #===============================================================================    
 def is_ojm_running(kill=False):
@@ -36,7 +37,9 @@ def is_ojm_running(kill=False):
                         print(type(e),e)
                         print('failed:',cmd.str())
         if found:
-            print('ojm.py running on',login_nodes[login_node],'\n')
+            print('ojm.py is running on',login_nodes[login_node],'\n')
+    if not result:
+        remote.err_print('ojm.py is not running on',current_cluster,'\n')
     return result 
     #---------------------------------------------------------------------------
 

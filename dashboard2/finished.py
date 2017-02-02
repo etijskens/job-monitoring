@@ -11,6 +11,7 @@ import remote
 from titleline import title_line
 from mycollections import od_first, od_last
 from cfg import Cfg
+from is_ojm_running import is_ojm_running
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -403,6 +404,7 @@ def main():
     parser.add_argument('--folder' ,action='store',type=str,default=Finished.default_local_folder)
     args = parser.parse_args()
     print('Finished.py: command line arguments:',args)
+    is_ojm_running()
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
                        ,offline = args.offline
