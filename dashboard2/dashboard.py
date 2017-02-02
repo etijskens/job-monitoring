@@ -10,6 +10,7 @@ from ignoresignals import IgnoreSignals
 from PyQt4 import QtGui,QtCore,uic
 import sys
 import argparse
+from is_ojm_running import is_ojm_running
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
     """
@@ -259,7 +260,10 @@ def main():
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
     print('Dashboard.py: command line arguments:',args)
-
+    
+    if args.offline:
+        is_ojm_running()
+        
     Cfg.sampling_interval = args.interval
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep
