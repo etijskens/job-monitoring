@@ -22,6 +22,7 @@ class Connection:
     Class for managing a paramiko (ssh) connection to hopper
     """
     verbose = True
+    the_connection = None
     #---------------------------------------------------------------------------    
     def __init__( self
                 , username, ssh_key_filename, passphrase=None
@@ -61,18 +62,17 @@ class Connection:
     #---------------------------------------------------------------------------    
 
 #===============================================================================    
-def set_connection(cluster=current_cluster,login_node=0):
+def connect_to_login_node(cluster=current_cluster,login_node=0):
     """
     make a new paramiko connection that will be used further on in this job
     monitoring session.
     """
-    global the_connection
-    the_connection = Connection( *logindetails.me, cluster=cluster, login_node=login_node )
+    Connection.the_connection = Connection( *logindetails.me, cluster=cluster, login_node=login_node )
 #===============================================================================    
-if Cfg.offline:
-    the_connection = 'off-line'
-else:
-    set_connection()
+# if Cfg.offline:
+#     the_connection = 'off-line'
+# else:
+#     connect_to_login_node()
 #===============================================================================
 
 #===============================================================================
@@ -215,9 +215,9 @@ class RemoteCommand(CommandBase):
     def __init__(self,command):
         super(RemoteCommand,self).__init__()
         self.command = command
-        is_Connection = isinstance(the_connection,Connection)
-        if not is_Connection or ( is_Connection and not the_connection.is_connected() ):
-            raise Exception("not connected")
+        is_Connection = isinstance(Connection.the_connection,Connection)
+        if not is_Connection or ( is_Connection and not Connection.the_connection.is_connected() ):
+            raise NotConnected()
     #---------------------------------------------------------------------------
     def execute(self,post_processor=None):
         """
@@ -226,7 +226,7 @@ class RemoteCommand(CommandBase):
             Stderr if the command produces output on stderr
             an exception if anything goes wrong
         """
-        tpl = the_connection.paramiko_client.exec_command(self.command)
+        tpl = Connection.the_connection.paramiko_client.exec_command(self.command)
         
         self.sout = tpl[1].read().decode('utf-8')
         if not self.sout:
@@ -240,7 +240,7 @@ class RemoteCommand(CommandBase):
     #---------------------------------------------------------------------------
     
 #===============================================================================    
-def run(command, connection=the_connection,attempts=6,wait=60,post_processor=None):
+def run(command,attempts=6,wait=60,post_processor=None,raise_exception=False):
     """
     rather dirty wrapper around the Command
     """
@@ -255,8 +255,12 @@ def run(command, connection=the_connection,attempts=6,wait=60,post_processor=Non
     
     cmd = Cmd(command)
     try:
-        return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor)
+        if attempts==1 and raise_exception:
+            return cmd.execute(post_processor=post_processor) #may raise an exception
+        else:
+            return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor)
     except Exception as e:
+        err_print(type(e),e)
         return None
     #---------------------------------------------------------------------------
 
@@ -277,12 +281,12 @@ def glob(pattern,path=None):
         lines.pop()
     return lines
 #===============================================================================
-def copy_local_to_remote(local_path,remote_path, connection=the_connection):
-    sftp = connection.paramiko_client.open_sftp()
+def copy_local_to_remote(local_path,remote_path):
+    sftp = Connection.the_connection.paramiko_client.open_sftp()
     sftp.put(local_path, remote_path)
     sftp.close()
 #===============================================================================
-def copy_remote_to_local(local_path,remote_path, connection=the_connection,rename=False):
+def copy_remote_to_local(local_path,remote_path,rename=False):
     """
     Copy remote file <remote_path> to <local_path>, and optionally renames the source (to
     prevent it from being considered again in the next round, e.g.). As the remote host is 
@@ -294,7 +298,7 @@ def copy_remote_to_local(local_path,remote_path, connection=the_connection,renam
              empty str    : after copying the original file, it is removed.
              False        : after copying the original file, it is left as it was.
     """
-    sftp = connection.paramiko_client.open_sftp()
+    sftp = Connection.the_connection.paramiko_client.open_sftp()
     sftp.get(remote_path,local_path)
     sftp.close()
     if isinstance(rename,str):
@@ -328,6 +332,7 @@ if __name__=='__main__':
     result = cmd.execute_repeat(attempts=6, wait=1,post_processor=list_of_lines) 
     print(result)
     
+    connect_to_login_node()
     cmd = RemoteCommand('cd data/jobmonitor/ ; ls')
     result = cmd.execute()
     print(cmd.str()+'\n',result)

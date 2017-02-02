@@ -1,6 +1,5 @@
 """
 This python (3.5) script copies the job monitor to the remote location ~/data/jobmonitor.  
-
 """
 
 import remote
@@ -8,6 +7,7 @@ import glob
 
 #===============================================================================
 if __name__=="__main__":
+    remote.connect_to_login_node()
     # copy the offline job monitor    
     extensions = ['*.py','*.sh']
     for ext in extensions:

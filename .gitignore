@@ -6,6 +6,9 @@ dashboard2/completed/
 dashboard2/running/
 dashboard2/offline/
 dashboard2/obsolete/
+dashboard2/sphinx/_build/
+dashboard2/sphinx/_static/
+dashboard2/sphinx/_templates/
 jommeke/
 pyqt4/
 .metadata/

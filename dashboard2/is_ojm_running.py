@@ -1,5 +1,6 @@
 import remote
 import argparse
+import mycollections
 
 #===============================================================================    
 def is_ojm_running(kill=False):
@@ -7,13 +8,13 @@ def is_ojm_running(kill=False):
     Verifies if the offline job monitor is running on one of the login nodes.
     
     :param kill: if True kills the associated processe(s)
-    :return: list of login_nodes on which the offline job monitor is running.
+    :return: OrderedDict of {#login_node:[proces ids]}  on which the offline job monitor is running.
     """
     remote.Connection.verbose = False
     login_nodes = remote.cluster_properties[remote.current_cluster]['login_nodes']
-    result = []
+    result = mycollections.OrderedDict()
     for login_node in range(1,len(login_nodes)):
-        remote.set_connection(login_node=login_node)
+        remote.connect_to_login_node(login_node=login_node)
         username = remote.logindetails.me[0]
         command = "ps aux | grep '{}'".format(username)
         cmd = remote.RemoteCommand(command)
@@ -24,8 +25,8 @@ def is_ojm_running(kill=False):
             or 'ojm.py'     in line :
                 print(line)
                 found = True
-                result.append(login_node)
                 psid = line.split(' ',2)[1]
+                mycollections.od_add_list_item(result,login_node,psid)
                 if kill:
                     cmd = remote.RemoteCommand('kill '+psid)
                     try:
@@ -46,5 +47,4 @@ if __name__=='__main__':
     parser.add_argument('-k','--kill',action='store_true')
     args = parser.parse_args()
     print('is_ojm_running.py: command line arguments:',args,'\n')
-
     is_ojm_running(args.kill)

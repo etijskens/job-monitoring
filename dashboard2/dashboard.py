@@ -247,9 +247,8 @@ class Dashboard(QtGui.QMainWindow):
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)
     #---------------------------------------------------------------------------------------------------------
-
-if __name__=='__main__':
-
+#=============================================================================================================
+def main():
     app = QtGui.QApplication(sys.argv)
     
     parser = argparse.ArgumentParser('job-monitor')
@@ -260,6 +259,7 @@ if __name__=='__main__':
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
     print('Dashboard.py: command line arguments:',args)
+
     Cfg.sampling_interval = args.interval
     dashboard = Dashboard(verbose =     args.verbose
                          ,beep    = not args.no_beep
@@ -269,5 +269,12 @@ if __name__=='__main__':
     dashboard.show()
     
     sys.exit(app.exec_())
+#=============================================================================================================
 
+#=============================================================================================================
+if __name__=='__main__':
+    import remote
+    remote.connect_to_login_node()
+
+    main()
     print('\n-- finished --')

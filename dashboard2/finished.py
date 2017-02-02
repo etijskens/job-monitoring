@@ -149,6 +149,8 @@ class Finished(QtGui.QMainWindow):
                     if isinstance(e,remote.Stderr) \
                     and 'ls: cannot access *.pickled: No such file or directory' in str(e):
                         print('No new reports found.')
+                    elif isinstance(e,remote.NotConnected):
+                        print('Not connected, only previously downloaded reports are available.')
                     else:
                         remote.err_print(type(e),e)
                     filenames_remote = []
@@ -389,11 +391,9 @@ class Finished(QtGui.QMainWindow):
             shutil.move(self.current_jobh.filepath,dest)
             self.current_jobh.filepath = dest
             self.append_to_overview_line(filename,' archived > '+archive)
-
     #---------------------------------------------------------------------------------------------------------
-
-if __name__=='__main__':
-
+#=============================================================================================================
+def main():
     app = QtGui.QApplication(sys.argv)
     
     parser = argparse.ArgumentParser('finished')
@@ -409,7 +409,9 @@ if __name__=='__main__':
                        ,folder  = args.folder
                        )
     finished.show()
-    
     sys.exit(app.exec_())
-
+#=============================================================================================================
+if __name__=='__main__':
+    remote.connect_to_login_node()
+    main()
     print('\n-- finished --')

@@ -63,7 +63,7 @@ class Data_jobscript:
                         ]
         else:
             try:
-                self.data = remote.run(command,post_processor=remote.list_of_lines)
+                self.data = remote.run(command,post_processor=remote.list_of_lines,attempts=1,raise_exception=True)
             except Exception as e:
                 s = str(e)
                 if 'No such file or directory' in s:
