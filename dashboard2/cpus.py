@@ -1,5 +1,10 @@
+"""
+Module cpus.py. Collection of functions and classes to retrieve information from 
+compute nodes.
+"""
 import remote
 from constants import dim, normal, blue, bold, red, default
+from _testcapi import raise_exception
 
 _test = False
 
@@ -13,6 +18,9 @@ def cpu_list(s):
     '0-3,10' -> [0,1,2,3,10]
     '0-3,10-13' -> [0,1,2,3,10,11,12,13]
     '0-3,10-13,9' -> [0,1,2,3,9,10,11,12,13]
+    
+    :param str s: string with comma-separated cpu numbers (or ranges thereof).
+    :return: list of ints with cpu numbers. 
     """
     ranges = s.split(',')
     cpus = []
@@ -33,7 +41,12 @@ def cpu_list(s):
 #===============================================================================
 def list_cores(compute_node,jobid):
     """
-    return a list with the cores used by job ``jobid`` on compute node ``compute_node``.
+    List the cores used by a job on a compute node.
+    
+    :param str compute_node: name of the compute node.
+    :param str jobid: job id
+    
+    :return list: list with the core numbers used by job ``jobid`` on compute node ``compute_node``.
     """
     lines = remote.run('ssh {} cat /dev/cpuset/torque/{}.hopper/cpus'.format(compute_node,jobid)
                       , post_processor=remote.list_of_lines
@@ -202,6 +215,27 @@ class Data_sar:
         return msg
     #---------------------------------------------------------------------------    
      
+#===============================================================================
+class Data_vmstat:
+    """
+    Class for storing and manipulating vmstat output of a compute node. Uses linux 
+    command ``vmstat``. I found the following links useful: 
+    
+    - `use-vmstat-to-monitor-system-performance <https://www.linode.com/docs/uptime/monitoring/use-vmstat-to-monitor-system-performance>`_
+    - `Check-Swap-Space-in-Linux <http://www.wikihow.com/Check-Swap-Space-in-Linux>`_
+    - `linux-which-process-is-using-swap <https://www.cyberciti.biz/faq/linux-which-process-is-using-swap>`_
+    - `Monitoring Virtual Memory with vmstat <http://www.linuxjournal.com/article/8178>`_
+    - `Tips for Monitoring Memory Usage in PBS jobs on Discover <https://www.nccs.nasa.gov/images/Montioring-Job-memory-brownbag.pdf>`_
+    """
+    def __init__(self,compute_node):
+        """"""
+        command = "ssh {} vmstat 1 1".format(compute_node)
+        try:
+            lines = remote.run(command,attempts=1,raise_exception=True)
+        except Exception as e:
+            remote.err_print(type(e),e)
+    #---------------------------------------------------------------------------    
+        
 #===============================================================================
 # test code below
 #===============================================================================

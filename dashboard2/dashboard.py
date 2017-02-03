@@ -1,5 +1,18 @@
 """
-Main program for job monitoring of running jobs
+Main gui program for job monitoring of **running** jobs. The showq command is sampled every 15 minutes 
+(configurable in cfg.Cfg). Sampling can either done on the local machine or on a login node.
+
+Useful command line arguments:
+
+- ``--offline`` : use the offline sampler
+
+The offline sampler must be started on a login node as::
+
+> cd data/jobmonitor
+> nohup ./start.sh &
+
+Offline sampling is preferrable if you want to continue sampling after switching off your 
+local workstation or laptop, or disconnecting it from the internet.
 """
 from showq import Sampler
 from cfg import Cfg
@@ -14,13 +27,20 @@ from is_ojm_running import is_ojm_running
 #===================================================================================================
 class Dashboard(QtGui.QMainWindow):
     """
+    Gui class based on PyQt 4.8 for job monitoring of running jobs.
+
+    Useful arguments:
+    
+    :param offline: uses offline sampling
+    
+    Less useful arguments
+    
+    :param bool verbose: if ``True`` produces slightly more output in the terminal.
+    :param bool beep: if  ``True`` produces a beep when sampling is finished (only for local sampling).
+    :param bool test__: if ``True`` local sampling does not examine the entire showq output, but returns as soon as a few good and bad jobs have been found.
     """
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,verbose=False
-                     ,beep   =True
-                     ,test__ =False
-                     ,offline=False
-                     ):
+    def __init__(self,offline=False,verbose=False,beep=True,test__=False):
         """"""
         super(Dashboard, self).__init__()
         self.ui = uic.loadUi('dashboard.ui',self)
@@ -49,7 +69,9 @@ class Dashboard(QtGui.QMainWindow):
         self.timer.start()
     #---------------------------------------------------------------------------------------------------------         
     def sample(self):
-        """"""
+        """
+        This slot is connect to a QTimer.timeout signal. It starts sampling the showq output.
+        """
         self.previous_block = 0
         if self.analyze_offline_data:
             self.sampler.sample_offline()
@@ -73,7 +95,9 @@ class Dashboard(QtGui.QMainWindow):
         self.show_overview(timestamp)
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self,timestamp):
-        """"""
+        """
+        Build and show the text in the job overview pane for the sample corresponding to ``timestamp``. 
+        """
         self.ui.qwOverviewTimestamp.setText(timestamp)
         text = self.sampler.overviews[timestamp] 
         self.ui.qwOverview.setPlainText( text )
@@ -85,7 +109,9 @@ class Dashboard(QtGui.QMainWindow):
         self.ui.qwOverviewNSamples.setText(text)
     #---------------------------------------------------------------------------------------------------------         
     def show_details(self,jobid,timestamp):
-        """"""
+        """
+        Build and show the text in the job details pane for ``jobid`` and ``timestamp``. 
+        """
         if jobid=='':
             self.ui.qwDetailsTimestamp.setText('')
             self.ui.qwDetails         .setPlainText('')
@@ -108,7 +134,10 @@ class Dashboard(QtGui.QMainWindow):
             
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
-        """"""
+        """
+        Moving the cursor (with the keyboard or the mouse) shows the details for the selected job and the
+        current timestamp.
+        """
         # TODO: this function is execute many times when a job is selected in the overview. 
         #       This is probably not necessary.
         if self.ignore_signals:
@@ -157,34 +186,53 @@ class Dashboard(QtGui.QMainWindow):
             print('selected:',jobid)
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewFirst_pressed(self):
-        print('on_qwOverviewFirst_pressed')
+        """
+        Show the overview corresponding to the first available sample.
+        """
+#         print('on_qwOverviewFirst_pressed')
         self.move_overview(index=0)
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewFBwd_pressed(self):
-        print('on_qwOverviewFBwd_pressed')
+        """
+        Show the overview corresponding to 5 samples back.
+        """
+#         print('on_qwOverviewFBwd_pressed')
         self.move_overview(delta=-5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewBwd_pressed(self):
-        print('on_qwOverviewBwd_pressed')
+        """
+        Show the overview corresponding to 1 sample back.
+        """
+#         print('on_qwOverviewBwd_pressed')
         self.move_overview(delta=-1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewFwd_pressed(self):
-        print('on_qwOverviewFwd_pressed')
+        """
+        Show the overview corresponding to 1 sample ahead.
+        """
+#         print('on_qwOverviewFwd_pressed')
         self.move_overview(delta=1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewFFwd_pressed(self):
-        print('on_qwOverviewFFwd_pressed')
+        """
+        Show the overview corresponding to 5 sample ahead.
+        """
+#         print('on_qwOverviewFFwd_pressed')
         self.move_overview(delta=5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewLast_pressed(self):
+        """
+        Show the overview corresponding to the last sample.
+        """
         print('on_qwOverviewLast_pressed')
         self.move_overview(index=-1)
     #---------------------------------------------------------------------------------------------------------
     def move_overview(self,index=None,delta=None):
         """
-        navigate to an overview:
-            in an absolute index specified by <index>
-            in a relative way: current index + <delta> 
+        Navigate between overviews:
+        
+        :param int index: navigate to absolute sample number
+        :param int delta: navigate to the curent sample number + ``delta``
         """
         i = index
         if delta:
@@ -199,30 +247,54 @@ class Dashboard(QtGui.QMainWindow):
         self.show_overview(timestamp)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsFirst_pressed(self):
-        print('on_qwDetailsFirst_pressed')
+        """
+        Show the details of the selected job corresponding to the first sample.
+        """
+#         print('on_qwDetailsFirst_pressed')
         self.move_details(index=0)
     #---------------------------------------------------------------------------------------------------------
     def on_qwDetailsFBwd_pressed(self):
-        print('on_qwDetailsFBwd_pressed')
+        """
+        Show the details of the selected job corresponding to 5 samples back.
+        """
+#         print('on_qwDetailsFBwd_pressed')
         self.move_details(delta=-5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsBwd_pressed(self):
-        print('on_qwDetailsBwd_pressed')
+        """
+        Show the details of the selected job corresponding to 1 sample back.
+        """
+#         print('on_qwDetailsBwd_pressed')
         self.move_details(delta=-1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsFwd_pressed(self):
+        """
+        Show the details of the selected job corresponding to 1 sample ahead.
+        """
         print('on_qwDetailsFwd_pressed')
         self.move_details(delta=1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsFFwd_pressed(self):
-        print('on_qwDetailsFFwd_pressed')
+        """
+        Show the details of the selected job corresponding to 5 samples ahead.
+        """
+#         print('on_qwDetailsFFwd_pressed')
         self.move_details(delta=5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsLast_pressed(self):
-        print('on_qwDetailsLast_pressed')
+        """
+        Show the details of the selected job corresponding to the last sample.
+        """
+#         print('on_qwDetailsLast_pressed')
         self.move_details(index=-1)
     #---------------------------------------------------------------------------------------------------------         
     def move_details(self,index=None,delta=None):
+        """
+        Navigate between details:
+        
+        :param int index: navigate to absolute sample number
+        :param int delta: navigate to the curent sample number + ``delta``
+        """
         i = index
         jobid = self.ui.qwDetailsJobid.text()
         job = self.sampler.jobs[jobid]
@@ -241,13 +313,14 @@ class Dashboard(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     def on_qwMail_pressed(self):
         """
-        copy the email address of the user of the current job to the clipboard
+        Copy the email address of the user of the current job to the clipboard.
         """
         address = address_of(self.username) 
         print(address)
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)
     #---------------------------------------------------------------------------------------------------------
+    
 #=============================================================================================================
 def main():
     app = QtGui.QApplication(sys.argv)

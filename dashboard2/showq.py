@@ -1,3 +1,6 @@
+"""
+Collection of function and classes for sampling the showq output.
+"""
 import remote
 from cpus       import cpu_list
 from script     import Data_jobscript
@@ -20,10 +23,11 @@ ignore_users = []
 def run_showq():
     """
     Runs ``showq -r -p hopper --xml`` on a login node,
-    parse its xml output, discard everything but the job entries 
-    convert the job entries from a list of OrderedDicts to a list of ShowqJobEntries,
-    remove the job entries whose mhost is unknown 
-    remove worker job entries
+    
+    1. parse its xml output, discard everything but the job entries 
+    2. convert the job entries from a list of OrderedDicts to a list of ShowqJobEntries,
+    3. remove the job entries whose mhost is unknown 
+    4. remove worker job entries
     """
     data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
     job_entries = data_showq['Data']['queue']['job']
@@ -53,6 +57,9 @@ def run_showq():
 
 #===============================================================================    
 class ShowqJobEntry:
+    """
+    Class for storing and manipulating a single job entry in the xml output of showq. 
+    """
     #---------------------------------------------------------------------------    
     def __init__(self,job_entry):
         """
@@ -86,14 +93,23 @@ class ShowqJobEntry:
         
     #---------------------------------------------------------------------------    
     def get_jobid_long(self):
+        """ 
+        :return str: long jobid, includes the cluster on which it was submitted. 
+        """
         jobid = self.data['@DRMJID']
         return jobid
     #---------------------------------------------------------------------------    
     def get_jobid(self):
+        """ 
+        :return str: short jobid, just the string representation of a number. 
+        """
         jobid = self.data['@JobID']
         return jobid
     #---------------------------------------------------------------------------    
     def get_state(self):
+        """ 
+        :return str: state of the job, 'R', 'C', ... 
+        """
         state = self.data['@State']
         return state
     #---------------------------------------------------------------------------    
@@ -138,16 +154,25 @@ class ShowqJobEntry:
         return round(value,2)
     #---------------------------------------------------------------------------    
     def get_username(self):
+        """ 
+        :return str: username. 
+        """
         value = self.data['@User']
         return value
     #---------------------------------------------------------------------------    
     def get_mhost(self,short=True):
+        """ 
+        :return str: name of the master compute node. 
+        """
         value = self.data['@MasterHost']
         if short:
             value = value.split('.',1)[0]
         return value    
     #---------------------------------------------------------------------------    
     def get_ncores(self):
+        """ 
+        :return int: total number of cores for this job  
+        """
         value = int( self.data['@ReqProcs'] )
         return value
     #---------------------------------------------------------------------------    
@@ -155,7 +180,7 @@ class ShowqJobEntry:
 #===============================================================================    
 def overview_by_user(arg):
     """
-    sort key for sorting warnings by username
+    Sort key for sorting warnings by username
     """
     return arg.split(' ',1)[1]
     #---------------------------------------------------------------------------    

@@ -10,16 +10,11 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
+   
+   dashboard
+   finished
+   modules
 
-Script dashboard.py
-===================
-.. automodule:: dashboard
-   :members:
-
-Script finished.py
-===================
-.. automodule:: finished
-   :members:
 
 
 Indices and tables

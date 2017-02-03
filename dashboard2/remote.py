@@ -242,7 +242,9 @@ class RemoteCommand(CommandBase):
 #===============================================================================    
 def run(command,attempts=6,wait=60,post_processor=None,raise_exception=False):
     """
-    rather dirty wrapper around the Command
+    Wrapper function around Command and RemoteCommand. i
+    
+    :param str command:
     """
     if Cfg.offline:
         # we are running on a login node, so we can execute the command using 
