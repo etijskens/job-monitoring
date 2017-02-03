@@ -1,5 +1,18 @@
 """
-Main program for job monitoring of finished jobss
+Main gui program for job monitoring of **finished** jobs. The showq command is sampled every 15 minutes 
+(configurable in cfg.Cfg). Sampling can either done on the local machine or on a login node.
+
+Useful command line arguments:
+
+- ``--offline`` : use the offline sampler
+
+The offline sampler must be started on a login node as::
+
+> cd data/jobmonitor
+> nohup ./start.sh &
+
+Offline sampling is preferrable if you want to continue sampling after switching off your 
+local workstation or laptop, or disconnecting it from the internet.
 """
 from PyQt4 import QtGui,QtCore,uic
 import sys,os,argparse,glob,shutil
@@ -171,7 +184,7 @@ class Finished(QtGui.QMainWindow):
                             remote.err_print(type(e),e)
                             continue
         else:
-            self.self.local_folder  = 'completed/'
+            self.local_folder  = 'completed/'
             filenames_local = glob.glob(self.local_folder+pattern)
             
         for filepath in filenames_local:
