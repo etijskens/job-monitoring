@@ -1,6 +1,7 @@
-dashboard script
+timestamp module
 ================
-.. automodule:: dashboard
+
+.. automodule:: timestamp
     :members:
     :undoc-members:
     :show-inheritance:

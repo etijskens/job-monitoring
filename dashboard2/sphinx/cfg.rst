@@ -1,7 +1,7 @@
-finished module
-===============
+cfg module
+==========
 
-.. automodule:: finished
+.. automodule:: cfg
     :members:
     :undoc-members:
     :show-inheritance:

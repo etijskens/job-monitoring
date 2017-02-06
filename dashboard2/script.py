@@ -1,6 +1,6 @@
 
 import remote
-from constants import dim, normal, bold, default, green
+from constants import ES
 
 _test = False
 
@@ -91,14 +91,13 @@ class Data_jobscript:
         s = ''
         for line in self.clean:
             if '#PBS' in line and '-l' in line:
-                s += bold+line+normal
+                s += ES.bold+line+ES.normal
             elif 'module'in line and ('load' in line or 'add' in line): 
-                s += bold+green+line+default+normal
+                s += ES.bold+ES.green+line+ES.default+ES.normal
             else:
-                s += dim +line+normal
+                s += ES.dim +line+ES.normal
             s+='\n'
         return s[:-1]
-    
     #---------------------------------------------------------------------------    
     def loaded_modules(self,short=False):
         if not hasattr(self,'modules'):

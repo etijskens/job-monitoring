@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+"""
+Print a progress bar on the terminal.
+"""
 from __future__ import division
 import sys
 from datetime import datetime
@@ -9,14 +10,14 @@ from datetime import datetime
 #==================================================================================================
 def printProgress(iteration, total, prefix = 'Progress: ', suffix = '', decimals = 1, barLength = 50):
     """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int), if negative shows iteration/total rather 
-        barLength   - Optional  : character length of bar (Int)
+    Call in a loop to print a progress bar in the terminal.
+    
+    :param int iteration: current iteration.
+    :param int total: total number of iterations.
+    :param str prefix: prefix string.
+    :param str suffix: suffix string.
+    :param int decimals: positive number of decimals in percent complete (Int), if negative shows iteration/total. 
+    :param int barLength: character length of bar.
     """
     if iteration==0:
         print()

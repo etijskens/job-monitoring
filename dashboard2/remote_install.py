@@ -1,5 +1,8 @@
 """
-This python (3.5) script copies the job monitor to the remote location ~/data/jobmonitor.  
+A Python (3.5) script that copies the job monitor to the remote location ~/data/jobmonitor.
+This makes the offline job monitor available.
+
+No command line arguments.
 """
 
 import remote

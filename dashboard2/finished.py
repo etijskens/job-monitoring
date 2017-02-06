@@ -13,6 +13,10 @@ The offline sampler must be started on a login node as::
 
 Offline sampling is preferrable if you want to continue sampling after switching off your 
 local workstation or laptop, or disconnecting it from the internet.
+
+classes and functions
+=====================
+
 """
 from PyQt4 import QtGui,QtCore,uic
 import sys,os,argparse,glob,shutil
@@ -47,6 +51,9 @@ def completed_jobs_by_time(arg):
 #===================================================================================================
 class JobHistory:
     """
+    Wrapper class for *showq.Job*
+     
+    :param str filepath: path to report file *<username>_<jobid>_<timestamp>.pickled*.
     """
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,filepath):
@@ -91,13 +98,22 @@ class JobHistory:
 #===================================================================================================
 class Finished(QtGui.QMainWindow):
     """
+    Gui class for inspecting finished jobs, remotely or locally.
+    
+    Useful arguments:
+    
+    :param bool offline: inspecting offline sampled jobs, rather than locally sampled jobs.
+    :param str local_folder: relative path to the local folder where we start out.
+    
+    Less useful arguments:
+     
+    :param bool verbose: more or less printing.
+    :param bool test__: for testing the gui
     """
     default_local_folder = 'offline/completed/'
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,verbose=False
+    def __init__(self,offline=False,local_folder='offline/completed/',verbose=False
                      ,test__ =False
-                     ,offline=False
-                     ,folder ='offline/completed/'
                      ):
         """
         """
@@ -108,7 +124,7 @@ class Finished(QtGui.QMainWindow):
         self.verbose = verbose
         self.test__  = test__
         self.analyze_offline_data = offline
-        self.local_folder = folder # where finished.py looks for finished jobs. 
+        self.local_folder = local_folder # where finished.py looks for finished jobs. 
         #   If not equal to Finished.default_local_folder, no new finished jobs
         #   are copied from the remote folder.
         self.fetch_remote = (self.local_folder==Finished.default_local_folder)
@@ -146,6 +162,9 @@ class Finished(QtGui.QMainWindow):
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
     def get_completed_reports(self):
+        """
+        Retrieve reports of completed jobs to *self.local_folder*.
+        """
         print('Retrieving reports of completed jobs ...')
         self.map_filename_job = {}
         pattern = '*.pickled'
@@ -197,29 +216,42 @@ class Finished(QtGui.QMainWindow):
         print('Retrieving reports of completed jobs ... done')
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewRefresh_pressed(self):
+        """
+        Slot for retrieving the last completed reports to *self.local_folder*.
+        """
         self.get_completed_reports()
     #---------------------------------------------------------------------------------------------------------
     def on_qwOverviewReverse_stateChanged(self):
-        print('on_qwOverviewReverse_stateChanged')
+        """
+        Slot for when the sort order has changed.
+        """
         self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewUser_toggled(self):
-        print('on_qwOverviewUser_toggled')
+        """
+        Slot for when the sort key has changed.
+        """
         if self.ui.qwOverviewUser.isChecked():
             self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewJobid_toggled(self):
-        print('on_qwOverviewJobid_toggled')
+        """
+        Slot for when the sort key has changed.
+        """
         if self.ui.qwOverviewJobid.isChecked():
             self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverviewTime_toggled(self):
-        print('on_qwOverviewTime_toggled')
+        """
+        Slot for when the sort key has changed.
+        """
         if self.ui.qwOverviewTime.isChecked():
             self.sort_overview()
     #---------------------------------------------------------------------------------------------------------         
     def sort_overview(self):
-        print('sort_overview')
+        """
+        Sort the overview according to selected key and order.
+        """
         if self.ui.qwOverviewUser.isChecked():
             sort_key = completed_jobs_by_user
         elif self.ui.qwOverviewJobid.isChecked():
@@ -232,7 +264,11 @@ class Finished(QtGui.QMainWindow):
         self.show_overview()
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self,select_lineno=0):
-        """"""
+        """
+        Show the overview text and select line *select_lineno*.
+        
+        :param int select_lineno: line number to select (and for which the details will be shown). 
+        """
         text = '\n'
         text+= '\n'.join(self.overview_lines)
         self.ui.qwOverview.setPlainText(text)
@@ -240,7 +276,9 @@ class Finished(QtGui.QMainWindow):
             self.overview_move_cursor_to(select_lineno)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwOverview_cursorPositionChanged(self):
-        """"""
+        """
+        Slot for when the cursor in the overview changes position.
+        """
         if self.ignore_signals:
 #             print('ignored')
             return
@@ -256,6 +294,7 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     def overview_move_cursor_to(self,lineno):
         """
+        Move the cursor in the overview to line *lineno*.
         """
         cursor = self.ui.qwOverview.textCursor()
         for i in range(lineno):
@@ -268,7 +307,7 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     def append_to_overview_line(self,filename,s):
         """
-        append string s to the overview line that corresponds to filename
+        Append string *s *to the overview line that corresponds to file *filename*,
         """
         if s:
             for i in range(len(self.overview_lines)):
@@ -280,17 +319,13 @@ class Finished(QtGui.QMainWindow):
                     self.overview_lines[i] = line
                     self.show_overview(select_lineno=i+1) # first line is empty       
                     break
-#     #---------------------------------------------------------------------------------------------------------
-#     def keyPressEvent(self, *args, **kwargs):
-#         e = args[0]
-#         print(e,e.key())
-# #         if e.key()==
-#         return QtGui.QMainWindow.keyPressEvent(self, *args, **kwargs)
     #---------------------------------------------------------------------------------------------------------
     # qwDetails handling
     #---------------------------------------------------------------------------------------------------------             
     def show_details(self,filename):
-        """"""
+        """
+        Show the details of report file *filename*.
+        """
         if filename:
             jobh = self.map_filename_job[filename]
             if jobh is None:
@@ -315,30 +350,48 @@ class Finished(QtGui.QMainWindow):
             self.current_jobh = None
     #---------------------------------------------------------------------------------------------------------
     def on_qwDetailsFirst_pressed(self):
-        print('on_qwDetailsFirst_pressed')
+        """
+        Navigate between samples in job details: to first sample.
+        """
         self.move_details(index=0)
     #---------------------------------------------------------------------------------------------------------
     def on_qwDetailsFBwd_pressed(self):
-        print('on_qwDetailsFBwd_pressed')
+        """
+        Navigate between samples in job details: 5 samples back.
+        """
         self.move_details(delta=-5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsBwd_pressed(self):
-        print('on_qwDetailsBwd_pressed')
+        """
+        Navigate between samples in job details: to previous sample.
+        """
         self.move_details(delta=-1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsFwd_pressed(self):
-        print('on_qwDetailsFwd_pressed')
+        """
+        Navigate between samples in job details: to next sample.
+        """
         self.move_details(delta=1)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsFFwd_pressed(self):
-        print('on_qwDetailsFFwd_pressed')
+        """
+        Navigate between samples in job details: 5 samples ahead.
+        """
         self.move_details(delta=5)
     #---------------------------------------------------------------------------------------------------------         
     def on_qwDetailsLast_pressed(self):
-        print('on_qwDetailsLast_pressed')
+        """
+        Navigate between samples in job details: to last sample.
+        """
         self.move_details(index=-1)
     #---------------------------------------------------------------------------------------------------------         
     def move_details(self,index=None,delta=None):
+        """
+        Navigate between samples in job details:
+        
+        :param int index: to sample with number *index*.
+        :param int delta: move *|delta|* samples ahead (or back, if *delta* is negative).
+        """
         i = index
         if delta:
             i = self.current_jobh.current_timestamp + delta
@@ -371,7 +424,7 @@ class Finished(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     def on_qwMail_pressed(self):
         """
-        copy the email address of the user of the current job to the clipboard
+        Copy the email address of the user of the current job to the clipboard
         """
         if self.current_jobh is None:
             return
@@ -390,12 +443,14 @@ class Finished(QtGui.QMainWindow):
     def on_qwArchiveToIssues_pressed(self):
         """
         Archive the selected job to './offline/issues'
-        We might revisit this one to study the problem further.   
+        We might revisit this one to study the problem further or to follow up on this user/type of job.   
         """
         self.archive_current_job('issues')
     #---------------------------------------------------------------------------------------------------------
     def archive_current_job(self,archive):
-        """"""
+        """
+        Move job report to archive *archive*.
+        """
         if not self.current_jobh is None:
             dest = list(os.path.split(self.current_jobh.filepath))
             filename = dest[-1]
@@ -407,7 +462,10 @@ class Finished(QtGui.QMainWindow):
             self.append_to_overview_line(filename,' archived > '+archive)
     #---------------------------------------------------------------------------------------------------------
 #=============================================================================================================
-def main():
+# the script
+#=============================================================================================================
+if __name__=='__main__':
+    remote.connect_to_login_node()
     app = QtGui.QApplication(sys.argv)
     
     parser = argparse.ArgumentParser('finished')
@@ -425,8 +483,5 @@ def main():
                        )
     finished.show()
     sys.exit(app.exec_())
-#=============================================================================================================
-if __name__=='__main__':
-    remote.connect_to_login_node()
-    main()
+
     print('\n-- finished --')

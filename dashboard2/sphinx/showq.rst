@@ -1,7 +1,7 @@
-finished module
-===============
+showq module
+============
 
-.. automodule:: finished
+.. automodule:: showq
     :members:
     :undoc-members:
     :show-inheritance:

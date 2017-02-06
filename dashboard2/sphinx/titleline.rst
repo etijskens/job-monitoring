@@ -1,6 +1,7 @@
-dashboard script
+titleline module
 ================
-.. automodule:: dashboard
+
+.. automodule:: titleline
     :members:
     :undoc-members:
     :show-inheritance:

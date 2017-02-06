@@ -1,3 +1,11 @@
+"""
+Function and script to test if the offline job monitor ojm.py is running any of 
+the login nodes of the cluster. Optionally, stops the offline job monitor.
+
+Classes and functions
+=====================
+
+"""
 import remote
 import argparse
 import mycollections

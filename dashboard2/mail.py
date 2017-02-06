@@ -1,3 +1,10 @@
+"""
+Collection of functions for retrieving the email address of a user.
+
+Classes and functions
+=====================
+
+"""
 import remote
 
 import pickle,datetime
@@ -7,6 +14,9 @@ from collections import OrderedDict
 the_mail_adresses = None
 #===================================================================================================
 def address_of(username):
+    """
+    Return the mail address of user *username*.
+    """
     global the_mail_adresses
     if the_mail_adresses is None:
         the_mail_adresses = refresh_mail_addresses()
@@ -29,12 +39,18 @@ def address_of(username):
     
 #===================================================================================================
 def print_all():
+    """
+    Print all (username,mail address) pairs.
+    """
     for username,address in the_mail_adresses.items():
         print(username,address)
     #-----------------------------------------------------------------------------------------------
     
 #===================================================================================================
 def load_mail_addresses():
+    """
+    Load the most recent {(username,mail address)} dictionary from a pickled file and return it.
+    """
     try:
         mail_addresses = pickle.load( open('config/mail_addresses.pickled','rb') )
         print('Loaded config/mail_addresses.pickled')
@@ -45,6 +61,10 @@ def load_mail_addresses():
     
 #===================================================================================================
 def refresh_mail_addresses():
+    """
+    Obtain an up to date {(username,mail address)} dictionary. This is achieve by running a Python2.7
+    script on a login-node.
+    """
     # first copy the script to my remote home directory, so i have the most recent version of it.
     python_script = 'vsc20xxx_mailaddresses.py'
     try:

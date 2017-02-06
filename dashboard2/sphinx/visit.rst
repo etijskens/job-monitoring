@@ -1,7 +1,7 @@
-finished module
-===============
+visit module
+============
 
-.. automodule:: finished
+.. automodule:: visit
     :members:
     :undoc-members:
     :show-inheritance:

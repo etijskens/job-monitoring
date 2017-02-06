@@ -1,6 +1,7 @@
-dashboard script
+constants module
 ================
-.. automodule:: dashboard
+
+.. automodule:: constants
     :members:
     :undoc-members:
     :show-inheritance:

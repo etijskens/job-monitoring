@@ -4,7 +4,7 @@ Main gui program for job monitoring of **running** jobs. The showq command is sa
 
 Useful command line arguments:
 
-- ``--offline`` : use the offline sampler
+- *--offline* : use the offline sampler
 
 The offline sampler must be started on a login node as::
 
@@ -13,10 +13,14 @@ The offline sampler must be started on a login node as::
 
 Offline sampling is preferrable if you want to continue sampling after switching off your 
 local workstation or laptop, or disconnecting it from the internet.
+
+classes and functions
+=====================
+
 """
 from showq import Sampler
 from cfg import Cfg
-from constants import bell
+from constants import ES
 from mail import address_of
 from ignoresignals import IgnoreSignals
 
@@ -35,9 +39,9 @@ class Dashboard(QtGui.QMainWindow):
     
     Less useful arguments
     
-    :param bool verbose: if ``True`` produces slightly more output in the terminal.
-    :param bool beep: if  ``True`` produces a beep when sampling is finished (only for local sampling).
-    :param bool test__: if ``True`` local sampling does not examine the entire showq output, but returns as soon as a few good and bad jobs have been found.
+    :param bool verbose: if *True* produces slightly more output in the terminal.
+    :param bool beep: if  *True* produces a beep when sampling is finished (only for local sampling).
+    :param bool test__: if *True* local sampling does not examine the entire showq output, but returns as soon as a few good and bad jobs have been found.
     """
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,offline=False,verbose=False,beep=True,test__=False):
@@ -79,7 +83,7 @@ class Dashboard(QtGui.QMainWindow):
             self.sampler.sample(test__=self.test__)
         timestamp = self.sampler.timestamp() 
         if self.beep:
-            print(bell)
+            print(ES.bell)
         
         self.previous_jobid = self.ui.qwDetailsJobid.text() 
         if self.previous_jobid:
@@ -96,7 +100,7 @@ class Dashboard(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def show_overview(self,timestamp):
         """
-        Build and show the text in the job overview pane for the sample corresponding to ``timestamp``. 
+        Build and show the text in the job overview pane for the sample corresponding to *timestamp*. 
         """
         self.ui.qwOverviewTimestamp.setText(timestamp)
         text = self.sampler.overviews[timestamp] 
@@ -110,7 +114,7 @@ class Dashboard(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def show_details(self,jobid,timestamp):
         """
-        Build and show the text in the job details pane for ``jobid`` and ``timestamp``. 
+        Build and show the text in the job details pane for *jobid* and *timestamp*. 
         """
         if jobid=='':
             self.ui.qwDetailsTimestamp.setText('')
@@ -232,7 +236,7 @@ class Dashboard(QtGui.QMainWindow):
         Navigate between overviews:
         
         :param int index: navigate to absolute sample number
-        :param int delta: navigate to the curent sample number + ``delta``
+        :param int delta: navigate to the curent sample number + *delta*
         """
         i = index
         if delta:
@@ -293,7 +297,7 @@ class Dashboard(QtGui.QMainWindow):
         Navigate between details:
         
         :param int index: navigate to absolute sample number
-        :param int delta: navigate to the curent sample number + ``delta``
+        :param int delta: navigate to the curent sample number + *delta*
         """
         i = index
         jobid = self.ui.qwDetailsJobid.text()
@@ -322,7 +326,12 @@ class Dashboard(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------
     
 #=============================================================================================================
-def main():
+#   the script:
+#=============================================================================================================
+if __name__=='__main__':
+    import remote
+    remote.connect_to_login_node()
+
     app = QtGui.QApplication(sys.argv)
     
     parser = argparse.ArgumentParser('job-monitor')
@@ -346,12 +355,5 @@ def main():
     dashboard.show()
     
     sys.exit(app.exec_())
-#=============================================================================================================
 
-#=============================================================================================================
-if __name__=='__main__':
-    import remote
-    remote.connect_to_login_node()
-
-    main()
     print('\n-- finished --')

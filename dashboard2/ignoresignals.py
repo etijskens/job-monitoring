@@ -1,15 +1,19 @@
+"""
+Helper classes for gui scripts.
+
+Classes and functions
+=====================
+
+"""
 #===================================================================================================
 class IgnoreSignals:
     """
-    Context manager class for ignoring signals in QMainWindow instances 
+    Context manager class for ignoring signals in QMainWindow instances
+    
+    :param qwMainWindow: the QMainWindow in which signals have to be ignored.
     """
     #-----------------------------------------------------------------------------------------------
     def __init__(self, qwMainWindow):
-        """
-        Constructor.
-                
-        :parm expected_exceptions: expected exception type, or a tuple of expected exception types.
-        """
         self.qwMainWindow = qwMainWindow
         # store original state
         self.ignore_signals = self.qwMainWindow.ignore_signals

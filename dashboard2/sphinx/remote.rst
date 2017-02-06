@@ -1,7 +1,7 @@
-finished module
-===============
+remote module
+=============
 
-.. automodule:: finished
+.. automodule:: remote
     :members:
     :undoc-members:
     :show-inheritance:

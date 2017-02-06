@@ -1,7 +1,7 @@
-finished module
-===============
+ojm module
+==========
 
-.. automodule:: finished
+.. automodule:: ojm
     :members:
     :undoc-members:
     :show-inheritance:

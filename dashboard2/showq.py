@@ -1,17 +1,17 @@
 """
-Collection of function and classes for sampling the showq output.
+Functions and classes for sampling the *showq* output.
 """
+
 import remote
 from cpus       import cpu_list
 from script     import Data_jobscript
 from cfg        import Cfg
-from constants  import cluster_properties, current_cluster
 from qstatx     import Data_qstat
 from rules      import EfficiencyThresholdRule
 from timestamp  import get_timestamp
 from titleline  import title_line
 import          rules
-from mycollections import OrderedDict,od_add_list_item
+from mycollections import OrderedDict,od_add_list_item,od_last
 
 import pickle,os,shutil
 from time       import sleep
@@ -22,18 +22,19 @@ ignore_users = []
 #===============================================================================    
 def run_showq():
     """
-    Runs ``showq -r -p hopper --xml`` on a login node,
-    
-    1. parse its xml output, discard everything but the job entries 
-    2. convert the job entries from a list of OrderedDicts to a list of ShowqJobEntries,
-    3. remove the job entries whose mhost is unknown 
-    4. remove worker job entries
+    1. Run command ``showq -r -p hopper --xml`` on a login node, 
+    2. Parse its xml output, discard everything but the job entries. The result is a 
+       list with an OrderedDict per job entry. 
+    3. Wrap the job entries (=OrderedDicts) in :class:`ShowqJobEntry` objects,
+    4. Convert the list into a  
+    5. remove the job entries whose *mhost* is unknown,
+    6. remove job array entries.
     """
     data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
     job_entries = data_showq['Data']['queue']['job']
     # remove jobs
     #  . which have no mhost set
-    #  . which have jobid like '390326[1]' (=worker jobs)
+    #  . which have jobid like '390326[1]' (=job array jobs)
     result = []
     for job_entry in job_entries:
         converted = ShowqJobEntry(job_entry)
@@ -59,89 +60,96 @@ def run_showq():
 class ShowqJobEntry:
     """
     Class for storing and manipulating a single job entry in the xml output of showq. 
+    
+    Here is a typical job entry (in xml). It is converted to an :class:`OrderdDict`
+    by :func:`xmltodict.parse`:
+    
+    .. code-block:: html
+
+       <job
+       AWDuration="192260"
+       Class="q7d"
+       DRMJID="393684.hopper"
+       EEDuration="106250"
+       GJID="393684"
+       Group="vsc20213"
+       JobID="393684"
+       JobName="H2Diss-slabal2o3_MoO3"
+       MasterHost="r3c4cn02.hopper.antwerpen.vsc"
+       PAL="hopper"
+       ReqAWDuration="604800"
+       ReqProcs="160"    
+       RsvStartTime="1485577392"   
+       RunPriority="4970"
+       StartPriority="4970" 
+       StartTime="1485577392"
+       StatPSDed="30761912.000000" 
+       StatPSUtl="3691030.208000"
+       State="Running"
+       SubmissionTime="1485471138" 
+       SuspendDuration="0"
+       User="vsc20213"
+       >
+       </job>    
     """
     #---------------------------------------------------------------------------    
     def __init__(self,job_entry):
-        """
-        typical job entry (in xml)
-        <job 
-            AWDuration="192260" 
-            Class="q7d" 
-            DRMJID="393684.hopper" 
-            EEDuration="106250" 
-            GJID="393684" 
-            Group="vsc20213" 
-            JobID="393684" 
-            JobName="H2Diss-slabal2o3_MoO3" 
-            MasterHost="r3c4cn02.hopper.antwerpen.vsc" 
-            PAL="hopper" 
-            ReqAWDuration="604800" 
-            ReqProcs="160" 
-            RsvStartTime="1485577392" 
-            RunPriority="4970" 
-            StartPriority="4970" 
-            StartTime="1485577392" 
-            StatPSDed="30761912.000000" 
-            StatPSUtl="3691030.208000" 
-            State="Running" 
-            SubmissionTime="1485471138" 
-            SuspendDuration="0" 
-            User="vsc20213"
-        ></job>
-        """
         self.data = job_entry # OrderedDict
-        
     #---------------------------------------------------------------------------    
     def get_jobid_long(self):
         """ 
-        :return str: long jobid, includes the cluster on which it was submitted. 
+        :return: long jobid, includes the cluster on which it was submitted.
+        :rtype: str 
         """
         jobid = self.data['@DRMJID']
         return jobid
     #---------------------------------------------------------------------------    
     def get_jobid(self):
         """ 
-        :return str: short jobid, just the string representation of a number. 
+        :return: short jobid, just the number.
+        :rtype: str 
         """
         jobid = self.data['@JobID']
         return jobid
     #---------------------------------------------------------------------------    
     def get_state(self):
-        """ 
-        :return str: state of the job, 'R', 'C', ... 
+        """
+        :return: state of the job, 'R', 'C', ...
+        :rtype: str, 1 character. 
         """
         state = self.data['@State']
         return state
     #---------------------------------------------------------------------------    
     def get_effic(self,mhost_cores=None):
         """
-        Return the (uncorrected) efficiciency. 
-        According to the Adaptive Computing developers:
-        "For active jobs Moab reads in the "resources_used.cput" from Torque and 
-        divides that by the total processor seconds dedicated to the job. This 
-        is the efficiency of the job. Note that this can be a delayed statistic 
-        coming from torque so EFFIC is just an estimate until after a job has 
-        finished." 
-        The efficiency is termed uncorrected because in the current setup of hopper
-        Torque has no information from the slave nodes, and hence assumes that 
-        "resources_used.cput" is 0 for slave nodes. E.g. for a job running on 2 nodes,
-        each with 100% efficiency, Moab will report an efficiency of 50% after 100s 
-        because it is computed as:
-            total processor seconds: 100s * 2 nodes * 20 cores per node = 4000
-            resources_used.cput on master node = 100s * 20 cores per node = 2000
-            resources_used.cput on slave  node = 100s * 20 cores per node = 2000
-        but Torque sees 0s * 20 cores per node = 0s and thus reports (2000+0)/4000 = 50%
-        
-        We can scale the efficiency to the master node as 
-            50% * number_of_cores_used_by_all_nodes / number_of_cores_used_by_master_node 
-              = 50% * 40/20 = 100%
-        Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
-        and thus cannot correct the effic value, unless this value is provided as mhost_cores.
-        
-        The 'corrected' value, obviously provides only information on the master host node
-        rather than on the entire job! It is our hope that if the master node is performing 
-        well, the slave nodes do so too.
+        def get_effic(self,mhost_cores=None):
         """
+#         Return the (uncorrected) efficiciency. 
+#         According to the Adaptive Computing developers:
+#         "For active jobs Moab reads in the "resources_used.cput" from Torque and 
+#         divides that by the total processor seconds dedicated to the job. This 
+#         is the efficiency of the job. Note that this can be a delayed statistic 
+#         coming from torque so EFFIC is just an estimate until after a job has 
+#         finished." 
+#         The efficiency is termed uncorrected because in the current setup of hopper
+#         Torque has no information from the slave nodes, and hence assumes that 
+#         "resources_used.cput" is 0 for slave nodes. E.g. for a job running on 2 nodes,
+#         each with 100% efficiency, Moab will report an efficiency of 50% after 100s 
+#         because it is computed as:
+#             total processor seconds: 100s * 2 nodes * 20 cores per node = 4000
+#             resources_used.cput on master node = 100s * 20 cores per node = 2000
+#             resources_used.cput on slave  node = 100s * 20 cores per node = 2000
+#         but Torque sees 0s * 20 cores per node = 0s and thus reports (2000+0)/4000 = 50%
+#         
+#         We can scale the efficiency to the master node as 
+#             50% * number_of_cores_used_by_all_nodes / number_of_cores_used_by_master_node 
+#               = 50% * 40/20 = 100%
+#         Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
+#         and thus cannot correct the effic value, unless this value is provided as mhost_cores.
+#         
+#         The 'corrected' value, obviously provides only information on the master host node
+#         rather than on the entire job! It is our hope that if the master node is performing 
+#         well, the slave nodes do so too.
         numerator   = self.data['@StatPSUtl']
         denominator = self.data['@StatPSDed']
         try:
@@ -155,15 +163,17 @@ class ShowqJobEntry:
     #---------------------------------------------------------------------------    
     def get_username(self):
         """ 
-        :return str: username. 
+        def get_username(self):
         """
+#         :return str: username. 
         value = self.data['@User']
         return value
     #---------------------------------------------------------------------------    
     def get_mhost(self,short=True):
         """ 
-        :return str: name of the master compute node. 
+        def get_mhost(self,short=True):
         """
+#         :return str: name of the master compute node. 
         value = self.data['@MasterHost']
         if short:
             value = value.split('.',1)[0]
@@ -187,20 +197,27 @@ def overview_by_user(arg):
 
 #===============================================================================
 class JobSample:
+    """
+    :param ShowqJobEntry job_entry: the job entry.
+    :param Job job: the parent :class: Job object.
+    :param str timestamp: the timestamp of the sample.
+    """
     #---------------------------------------------------------------------------    
-    def __init__(self,job_entry,job):
+    def __init__(self,job_entry,job,timestamp):
         assert isinstance(job_entry, ShowqJobEntry)
         assert isinstance(job, Job)
         self.showq_job_entry = job_entry
         self.parent_job      = job
-        
+        self.timestamp       = timestamp
         self.data_qstat      = Data_qstat( job.jobid )
+        self.mhost_job_info  = NeighbouringJobInfo(self)
         self.data_sar        = None
-        # Compute whether all cores are in use
-        total_ncores_in_use = job_entry.get_ncores()
-        nnodes = self.data_qstat.get_nnodes()
-        total_ncores_available = nnodes*cluster_properties[current_cluster]['ncores_per_node'] 
-        self.all_cores_in_use = (total_ncores_in_use==total_ncores_available)
+
+#         # Compute whether all cores are in use
+#         total_ncores_in_use = job_entry.get_ncores()
+#         nnodes = self.data_qstat.get_nnodes()
+#         total_ncores_available = nnodes*cluster_properties[current_cluster]['ncores_per_node'] 
+#         self.all_cores_in_use = (total_ncores_in_use==total_ncores_available)
 
         ncores_mhost = len(cpu_list(self.data_qstat.node_cores[job_entry.get_mhost()]))   # number of cores used by this job on the master compute node
         self.effic = job_entry.get_effic(ncores_mhost) # corrected if Cfg.correct_effic==True
@@ -227,7 +244,6 @@ class JobSample:
             return True
         else:
             return False
-    
     #---------------------------------------------------------------------------
     def compose_overview(self):
         """
@@ -243,7 +259,6 @@ class JobSample:
         else:
             self.overview = ''
         return self.overview
-    
     #---------------------------------------------------------------------------
     def description(self):
         desc = '{} {} {} {}|{}'.format( self.showq_job_entry.get_jobid()
@@ -253,7 +268,6 @@ class JobSample:
                                       , self.get_ncores()
                                       )
         return desc
-    
     #---------------------------------------------------------------------------
     def compose_details(self):
         """
@@ -268,7 +282,7 @@ class JobSample:
                                                                            )
         for irule,count in enumerate(self.parent_job.warning_counts):
             rule = rules.the_rules[irule]
-            if not rule.ignore_in_job_details and count>0:
+            if count>0:
                 self.details +='\n  {:25}: {:5}'.format(rule.warning,count)
                 
         self.details += '\nwalltime used/remaining: {} / {}'.format( self.data_qstat.get_walltime_used()
@@ -284,8 +298,8 @@ class JobSample:
             self.details += '\n'+nohdr+node
             
         self.details += '\nother jobs on {}: '.format(self.showq_job_entry.get_mhost())
-        self.details += str(self.parent_job.neighbouring_jobs) 
-        self.details += '\n'
+        self.details += self.mhost_job_info.str() 
+            
         if self.data_qstat.node_sar:
             self.details += title_line('sar -P ALL 1 1',width=100,char='-')
             for node, data_sar in self.data_qstat.node_sar.items():
@@ -350,28 +364,109 @@ class JobSample:
     #---------------------------------------------------------------------------        
     def get_nnodes(self):        
         return self.data_qstat.get_nnodes()
+    #---------------------------------------------------------------------------
+
+#===============================================================================
+class NeighbouringJobInfo:
+    """
+    Info on all jobs running on the master node of a job sample.  
+    
+    :param JobSample job_sample:
+    """
+    def __init__(self,job_sample):
+        self.jobid  = [job_sample.parent_job.jobid]
+        self.nnodes = [job_sample.get_nnodes()]
+        self.ncores = [job_sample.get_ncores()]
+        self.effic  = [job_sample.showq_job_entry.get_effic()]
+        memreqd = job_sample.data_qstat.get_mem_requested()
+        memused = job_sample.data_qstat.get_mem_used()
+        self.memory = [max(memreqd,memused)]
+        
+        self.mhost = job_sample.showq_job_entry.get_mhost()
+        neighbouring_jobs = job_sample.parent_job.sampler.mhost_jobs[self.mhost]
+        for jobid2 in neighbouring_jobs:
+            if jobid2 != job_sample.parent_job.jobid:
+                self.jobid.append(jobid2)
+                job2 = job_sample.sampler.jobs[jobid][timestamp]
+                self.nnodes .append(job2.get_nnodes())
+                self.ncores .append(job2.get_ncores())
+                self.effic  .append(job2.get_effic      (timestamp))
+                memreqd = job2.get_memory_requested()
+                memused = job2.get_memory_used(timestamp)
+                self.memory.append(max(memreqd,memused))
+        self.n = len(neighbouring_jobs)
+        if self.n>1:
+            self.jobid .append('total:')
+            self.nnodes.append(1)
+            self.ncores.append(sum(self.ncores))
+            effic = 0
+            for i in range(self.n):                
+                effic += self.effic[i]*self.ncores[i]
+            self.effic.append( effic/self.ncores[-1] )
+            self.memused.append(sum(self.memused))
+    #---------------------------------------------------------------------------        
+    def str(self):
+        s = '\nother jobs on {}: '.format(self.mhost)
+        if self.n == 1:
+            s += 'None.'
+        else:
+            fmt = '\n  **{}**{:3}|{:2} {}% {}GB'
+            i = 0 
+            s = fmt.format( self.jobid  [i]
+                          , self.nnodes [i]
+                          , self.ncores [i]
+                          , self.effic  [i]
+                          , self.memused[i]
+                          )
+            fmt = fmt.replace('*',' ')
+            for i in range(1,self.n):
+                s += fmt.format( self.jobid  [i]
+                               , self.nnodes [i]
+                               , self.ncores [i]
+                               , self.effic  [i]
+                               , self.memused[i]
+                               )
+        s+='\n'
+        return s
     #---------------------------------------------------------------------------        
         
 #===============================================================================
 def hhmmss2s(hhmmss):
+    """
+    Convert time duration in format HH:MM:SS to number of seconds.
+    
+    :return: duration in seconds
+    :rtype: int
+    """
     words = hhmmss.split(':')
     assert len(words)==3
     seconds = int(words[2]) + 60*( int(words[1]) + 60*int(words[0]) )
     return seconds 
-#-------------------------------------------------------------------------------        
+#-------------------------------------------------------------------------------
+        
 #===============================================================================
 class Job:
+    """
+    class for storing and manipulating all data (:class:`JobSample` objects)
+    related to a job. 
+    
+    :param str timestamp: the timestamp of the first sample of the job. 
+    :param ShowqJobEntry job_entry: a job entry with the showq information of a job from a sample.
+    :param Sampler sampler: (a reference to) the :class:`Sampler` object in charge.
+
+    Occasionally, we need to examine other jobs to judge performance of a job, e.g. 
+    when a job is not using all resources of the node. For this reason :class:`Job` 
+    objects store a reference to the :class:`Sampler` object.  
+    """
     #---------------------------------------------------------------------------    
-    def __init__(self,job_entry,neighbouring_jobs,timestamp):
-        """
-        """
+    def __init__(self,timestamp,job_entry,sampler):
         assert isinstance(job_entry,ShowqJobEntry)
         self.jobid    = job_entry.get_jobid()
         self.username = job_entry.get_username()
         self.mhost    = job_entry.get_mhost()
         self.address  = None
     
-        self.neighbouring_jobs = neighbouring_jobs # list of jobs on the mhost        
+        self.sampler = sampler         
         
         self.nsamples_with_warnings = 0
         self.warning_counts = len(rules.the_rules)*[0]
@@ -388,8 +483,7 @@ class Job:
         """
         """
         self.last_timestamp = timestamp
-        self.samples[timestamp] = JobSample(job_entry,self)
-     
+        self.samples[timestamp] = JobSample(job_entry,self,timestamp)
     #---------------------------------------------------------------------------
     def timestamps(self):
         keys = list(self.samples.keys())
@@ -432,6 +526,13 @@ class Job:
         except:
             print('failed to remove',fname)
     #---------------------------------------------------------------------------
+    def get_nnodes(self,timestamp=None):
+        if timestamp is None:
+            sample = od_last(self.samples)[1]
+        else:
+            sample = self.samples[timestamp]
+        return sample.get_nnodes()
+    #---------------------------------------------------------------------------
     def pickle(self,prefix,only_if_warnings=True,verbose=False):
         if (only_if_warnings and self.nsamples_with_warnings) \
         or (not only_if_warnings): 
@@ -449,8 +550,8 @@ class Job:
 def unpickle(prefix,username,jobid,timestamp='',verbose=False):
     """
     This is the counterpart of Job.pickle()
-    :returns: the Job object that was pickled, or None if inexisting.
     """
+#     :returns: the Job object that was pickled, or None if inexisting.
     if 'running' in prefix:
         fname = '{}_{}.pickled'   .format(username,jobid)
     else:
@@ -495,8 +596,9 @@ class Sampler:
             from progress import printProgress
             hdr = 'sampling #{}'.format(len(self.timestamp_jobs)+1)
             
-        # create a dict { mhost : [jobid] } with all the jobs running on node mhost 
-        # and a list wit all uncompleted jobids
+        # create 
+        #   . a dict { mhost : [jobid] } with all the jobs running on node mhost 
+        #   . a list wit all uncompleted jobids
         # the latter is compared to the jobid list of the previous sample to find
         # out which jobs are finished.
         self.mhost_jobs = OrderedDict()
@@ -561,10 +663,7 @@ class Sampler:
                 job =  unpickle('running', username, jobid, verbose=verbose)
                 if job is None:
                     # this job is really encountered for the first time
-                    mhost = job_entry.get_mhost()
-                    neighbouring_jobs = list(self.mhost_jobs[mhost]) # make copy of the list 
-                    neighbouring_jobs.remove(jobid)
-                    job = Job(job_entry,neighbouring_jobs,timestamp)
+                    job = Job(timestamp,job_entry,self)
                 else:
                     job.add_sample(job_entry,timestamp)
                 self.jobs[jobid] = job 
@@ -671,13 +770,13 @@ class Sampler:
     #---------------------------------------------------------------------------
     def add_offline_job(self,job):
         """
-        Add an offline monitored job to the sampler
-        
-        self.jobs    = {}                # {jobid    :Job object  }
-        self.timestamps = []             # [timestamp]
-        self.timestamp_jobs = ListDict() # {timestamp:[jobids]}
-        self.overviews = OrderedDict()   # {timestamp:job_overview}
+        Add an offline monitored job to the sampler        
         """
+#         self.jobs    = {}                # {jobid    :Job object  }
+#         self.timestamps = []             # [timestamp]
+#         self.timestamp_jobs = ListDict() # {timestamp:[jobids]}
+#         self.overviews = OrderedDict()   # {timestamp:job_overview}
+
         self.jobs[job.jobid] = job
         for timestamp,job_sample in job.samples.items():
             od_add_list_item(self.timestamp_jobs,timestamp,job.jobid)
@@ -706,6 +805,8 @@ class Sampler:
 # test code below
 ################################################################################
 if __name__=="__main__":
+    remote.connect_to_login_node()
+
     test__ = True
     test__ = False
     sampler = Sampler()

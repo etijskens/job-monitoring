@@ -1,7 +1,7 @@
-finished module
-===============
+cpus module
+===========
 
-.. automodule:: finished
+.. automodule:: cpus
     :members:
     :undoc-members:
     :show-inheritance:

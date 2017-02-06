@@ -1,3 +1,12 @@
+"""
+Classes and functions for storing and manipulating the output of::
+
+    > qstat -x -f <jobid>
+     
+Classes and functions
+=====================
+
+"""
 import remote
 from collections import OrderedDict
 from constants import str2gb
@@ -7,9 +16,13 @@ from remote import CommandBase
 #===============================================================================    
 def run_qstat_f(jobid):
     """
-    Runs ``qstat -x -f <jobid>`` on a login node and returns the output, as an OrderedDict.
+    Runs::
     
-    :str jobid:  job id. 
+        > qstat -x -f <jobid>
+    
+    on a login node and returns the output, as an OrderedDict.
+    
+    :param str jobid:  job id. 
     """
     result = remote.run("qstat -x -f "+jobid, post_processor=remote.xml_to_odict )
     if result is None:
@@ -21,7 +34,12 @@ def run_qstat_f(jobid):
 #===============================================================================    
 class Data_qstat:
     """
-    Class for storing the output of 'qstat -f <jobid>'
+    Class for storing the output of::
+
+        > qstat -x -f <jobid>
+
+    :param str jobid: job id.
+
     Object properties:
        
         * jobid
@@ -31,8 +49,6 @@ class Data_qstat:
     """
     #---------------------------------------------------------------------------    
     def __init__(self,jobid,offline_test__=False):
-        """
-        """
         self.jobid = jobid
         
         if offline_test__:
@@ -53,26 +69,44 @@ class Data_qstat:
             self.node_cores[node] = words2[1]
     #---------------------------------------------------------------------------    
     def get_nnodes(self):
+        """
+        :return: number of nodes allocated to this job.
+        :rtype: int
+        """
         return len( self.node_cores )
     #---------------------------------------------------------------------------
     def get_ncores(self):
+        """
+        :return: total number of cores allocated to this job.
+        :rtype: int
+        """
         ncores = 0
         for cores in self.node_cores.values():
             ncores += len(cpu_list(cores))
         return ncores
     #---------------------------------------------------------------------------    
     def get_exec_host(self):
+        """
+        :return: exec_host value of this job. This lists the nodes and cores on which the job is running in detail.
+        :rtype: str
+        """
         value = self.data['exec_host']
         return value
     #---------------------------------------------------------------------------    
     def get_username(self):
+        """
+        :return: username of this job's owner.
+        :rtype: str
+        """
         value = self.data['Job_Owner']
         value = value.split('@')[0]
         return value
     #---------------------------------------------------------------------------    
     def get_master_node(self):
         """
-        return the master node (the first one in the 'exec_host' entry. 
+        :return: master node of the job (= first one in the 'exec_host' entry).  
+        :rtype: str
+
         This is the node where the job script can be found
         """
         value = self.data['exec_host'].split('/',1)[0]
@@ -80,7 +114,8 @@ class Data_qstat:
     #---------------------------------------------------------------------------    
     def get_walltime_remaining(self,fmt=True):
         """
-        Returns the remaining walltime as 'hh:mm:ss'
+        :return: the remaining walltime as 'hh:mm:ss'.
+        :rtype: str
         """
         try:
             value = int(self.data['Walltime']['Remaining'])
@@ -97,6 +132,10 @@ class Data_qstat:
         return s    
     #---------------------------------------------------------------------------    
     def get_walltime_used(self):
+        """
+        :return: the walltime used so far.
+        :rtype: str
+        """
         try: 
             value = self.data['resources_used']['walltime']
         except KeyError as e:
@@ -106,7 +145,7 @@ class Data_qstat:
     #---------------------------------------------------------------------------    
     def get_job_state(self,fmt=True):
         """
-        return job status as readable string 
+        Return job status as readable string 
         """
         value = self.data['job_state']
         if not fmt:
@@ -123,6 +162,10 @@ class Data_qstat:
         return '{} ({})'.format(value,s)
     #---------------------------------------------------------------------------    
     def get_mem_used(self):
+        """
+        :return: memory used by the job (GB).
+        :rtype: number
+        """
         try:
             s = self.data['resources_used']['mem'] # returns a str such as 'NNNNNNNNNkb'
         except KeyError:
@@ -131,6 +174,10 @@ class Data_qstat:
         return value 
     #---------------------------------------------------------------------------    
     def get_mem_requested(self):
+        """
+        :return: memory requested by the job (GB).
+        :rtype: number
+        """
         try:
             s = self.data['Resource_List']['mem'] # returns a str such as 'NNgb'
         except KeyError:
@@ -139,6 +186,10 @@ class Data_qstat:
         return value
     #---------------------------------------------------------------------------    
     def sar(self):
+        """
+        Run linux command sar on all nodes of the job and store processed output
+        in an OrderedDict.
+        """
         for compute_node,cores in self.node_cores.items():
             cores = cpu_list(cores)
             # find the load of these cores (sar)
@@ -147,21 +198,21 @@ class Data_qstat:
             self.node_sar[compute_node] = data_sar                
     #---------------------------------------------------------------------------        
     def is_interactive_job(self):
+        """
+        Test if this job is interactive.
+        """
         try:
             s = self.data['submit_args']
             tf = '-I' in s
             return tf
         except:
             return False
-    #---------------------------------------------------------------------------        
+    #---------------------------------------------------------------------------
+            
 ################################################################################
 # test code below
 ################################################################################
 if __name__=="__main__":
-    try:
-        import connect_me
-    except:
-        test__ = True
     
     jobid = '390159' 
     qstat = Data_qstat(jobid,offline_test__=False)

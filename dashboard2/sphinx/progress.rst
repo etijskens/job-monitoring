@@ -1,7 +1,7 @@
-finished module
+progress module
 ===============
 
-.. automodule:: finished
+.. automodule:: progress
     :members:
     :undoc-members:
     :show-inheritance:

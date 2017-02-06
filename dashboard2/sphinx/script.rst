@@ -1,7 +1,7 @@
-finished module
-===============
+script module
+=============
 
-.. automodule:: finished
+.. automodule:: script
     :members:
     :undoc-members:
     :show-inheritance:

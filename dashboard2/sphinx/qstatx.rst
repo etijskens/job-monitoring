@@ -1,7 +1,7 @@
-finished module
-===============
+qstatx module
+=============
 
-.. automodule:: finished
+.. automodule:: qstatx
     :members:
     :undoc-members:
     :show-inheritance:

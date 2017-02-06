@@ -1,7 +1,7 @@
-finished module
-===============
+mail module
+===========
 
-.. automodule:: finished
+.. automodule:: mail
     :members:
     :undoc-members:
     :show-inheritance:

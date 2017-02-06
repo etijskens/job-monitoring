@@ -9,13 +9,33 @@ Welcome to Job Monitor's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
    dashboard
    finished
-   modules
-
-
+   
+   cfg
+   constants
+   cpus
+   dashboard
+   finished
+   ignoresignals
+   is_ojm_running
+   logindetails
+   mail
+   mycollections
+   ojm
+   progress
+   qstatx
+   remote
+   remote_install
+   rules
+   script
+   showq
+   timestamp
+   titleline
+   visit
+   
 
 Indices and tables
 ==================

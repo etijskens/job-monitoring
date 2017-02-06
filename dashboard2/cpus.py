@@ -1,10 +1,13 @@
 """
-Module cpus.py. Collection of functions and classes to retrieve information from 
+Module cpus.py. Collection of functions and classes to retrieve live information from 
 compute nodes.
+
+Classes and functions
+=====================
+
 """
 import remote
-from constants import dim, normal, blue, bold, red, default
-from _testcapi import raise_exception
+from constants import ES
 
 _test = False
 
@@ -12,12 +15,13 @@ _test = False
 def cpu_list(s):
     """
     Convert string describing a list of cpus comprising comma-separated entries or 
-    ranges 'first-last' to a sorted list of all cpus.
-    '0,2,4,8' -> [0,2,4,8]
-    '0-3' -> [0,1,2,3]
-    '0-3,10' -> [0,1,2,3,10]
-    '0-3,10-13' -> [0,1,2,3,10,11,12,13]
-    '0-3,10-13,9' -> [0,1,2,3,9,10,11,12,13]
+    ranges 'first-last' to a sorted list of all cpus. E.g.:
+    
+    - '0,2,4,8' -> [0,2,4,8]
+    - '0-3' -> [0,1,2,3]
+    - '0-3,10' -> [0,1,2,3,10]
+    - '0-3,10-13' -> [0,1,2,3,10,11,12,13]
+    - '0-3,10-13,9' -> [0,1,2,3,9,10,11,12,13]
     
     :param str s: string with comma-separated cpu numbers (or ranges thereof).
     :return: list of ints with cpu numbers. 
@@ -45,7 +49,6 @@ def list_cores(compute_node,jobid):
     
     :param str compute_node: name of the compute node.
     :param str jobid: job id
-    
     :return list: list with the core numbers used by job ``jobid`` on compute node ``compute_node``.
     """
     lines = remote.run('ssh {} cat /dev/cpuset/torque/{}.hopper/cpus'.format(compute_node,jobid)
@@ -61,9 +64,13 @@ def list_cores(compute_node,jobid):
 #===============================================================================
 def run_sar_P(compute_node,cores=None):
     """
-        :str compute_node: the compute node where you want to run 'sar -P ALL 1 1', 
-        :param cores: a list of core ids on which you want information 
-        :returns: list with the relevant output lines
+    This function runs the linux command ``sar -P ALL 1 1`` on a compute node 
+    over ssh and returns its output as a list of lines. If cores is a list of core
+    numbers, the output for the other cores is discarded.
+    
+    :param str compute_node: name of a compute node. 
+    :param list cores: a list of core ids. 
+    :returns: list with the relevant output lines
     """
     command = "ssh {} sar -P ALL 1 1".format(compute_node)
     lines = remote.run(command,post_processor=remote.list_of_lines)
@@ -93,12 +100,14 @@ def run_sar_P(compute_node,cores=None):
 #===============================================================================
 class Data_sar:
     """
-    Class for storing and manipulating the output of ``sar -P ALL 1 1`` on a compute node
+    Class for storing and manipulating the output of ``sar -P ALL 1 1`` on a compute node.
+    The constructor arguments are the same as for :func:`run_sar_P`.
+    
+    :param str compute_node: name of a compute node. 
+    :param list cores: a list of core ids.
     """
     #---------------------------------------------------------------------------    
     def __init__(self,compute_node,cores=None):
-        """
-        """
         self.compute_node = compute_node
         self.cores = cores
         if _test:
@@ -153,13 +162,19 @@ class Data_sar:
                     self.columns[hdr].append(float(value)) # percentage
     #---------------------------------------------------------------------------    
     def get(self,column_header,core_id):
+        """
+        Read the output value in the column with header *column_header* for row *core_id*.
+        
+        :param str column_header: header of the column.
+        :param int core_id: core number 
+        """
         irow = self.columns['CPU'].index(core_id)
         value = self.columns[column_header][irow]
         return value 
     #---------------------------------------------------------------------------    
     def verify_load(self,threshold):
         """
-        Find cores with loads <= ``threshold``.
+        Returns *True* if all cores have a load > *threshold*, *False* otherwise.
         """
         self.threshold = threshold # used by self.message()
         percent_user = self.columns['%user']
@@ -173,6 +188,7 @@ class Data_sar:
     #---------------------------------------------------------------------------    
     def message(self,fmt=False):
         """
+        Format the data in a message and return it.
         """
         cpu            = self.columns['CPU'    ]
         percent_user   = self.columns['%user'  ]
@@ -182,11 +198,11 @@ class Data_sar:
         cn = self.compute_node.split('.',1)[0]
         if fmt:
             # construct formatted message
-            msg = (blue+(len(cn)*' ')+' {:<3}{:>10}{:>10}{:>10}{:>10}'+default+'\n').format('CPU','%user','%system','%iowait','%idle')
-            fmt_ok_cpu_user     = dim+     cn+' {:>3}{:>10.2f}'+normal+default
-            fmt_not_ok_cpu_user = bold+red+cn+' {:>3}{:>10.2f}'+normal
-            fmt_not_ok          = bold+red+'{:>10.2f}'+normal
-            fmt_ok              =      dim+'{:>10.2f}'+normal
+            msg = (ES.blue+(len(cn)*' ')+' {:<3}{:>10}{:>10}{:>10}{:>10}'+ES.default+'\n').format('CPU','%user','%system','%iowait','%idle')
+            fmt_ok_cpu_user     = ES.dim+     cn+' {:>3}{:>10.2f}'+ES.normal+ES.default
+            fmt_not_ok_cpu_user = ES.bold+ES.red+cn+' {:>3}{:>10.2f}'+ES.normal
+            fmt_not_ok          = ES.bold+ES.red+'{:>10.2f}'+ES.normal
+            fmt_ok              =      ES.dim+'{:>10.2f}'+ES.normal
             t = round((100-self.threshold)/5,2)
             for i in range(len(percent_user)):
                 if percent_user[i]<=self.threshold:
@@ -216,25 +232,25 @@ class Data_sar:
     #---------------------------------------------------------------------------    
      
 #===============================================================================
-class Data_vmstat:
-    """
-    Class for storing and manipulating vmstat output of a compute node. Uses linux 
-    command ``vmstat``. I found the following links useful: 
-    
-    - `use-vmstat-to-monitor-system-performance <https://www.linode.com/docs/uptime/monitoring/use-vmstat-to-monitor-system-performance>`_
-    - `Check-Swap-Space-in-Linux <http://www.wikihow.com/Check-Swap-Space-in-Linux>`_
-    - `linux-which-process-is-using-swap <https://www.cyberciti.biz/faq/linux-which-process-is-using-swap>`_
-    - `Monitoring Virtual Memory with vmstat <http://www.linuxjournal.com/article/8178>`_
-    - `Tips for Monitoring Memory Usage in PBS jobs on Discover <https://www.nccs.nasa.gov/images/Montioring-Job-memory-brownbag.pdf>`_
-    """
-    def __init__(self,compute_node):
-        """"""
-        command = "ssh {} vmstat 1 1".format(compute_node)
-        try:
-            lines = remote.run(command,attempts=1,raise_exception=True)
-        except Exception as e:
-            remote.err_print(type(e),e)
-    #---------------------------------------------------------------------------    
+# class Data_vmstat:
+#     """
+#     Class for storing and manipulating vmstat output of a compute node. Uses linux 
+#     command ``vmstat``. I found the following links useful: 
+#     
+#     - `use-vmstat-to-monitor-system-performance <https://www.linode.com/docs/uptime/monitoring/use-vmstat-to-monitor-system-performance>`_
+#     - `Check-Swap-Space-in-Linux <http://www.wikihow.com/Check-Swap-Space-in-Linux>`_
+#     - `linux-which-process-is-using-swap <https://www.cyberciti.biz/faq/linux-which-process-is-using-swap>`_
+#     - `Monitoring Virtual Memory with vmstat <http://www.linuxjournal.com/article/8178>`_
+#     - `Tips for Monitoring Memory Usage in PBS jobs on Discover <https://www.nccs.nasa.gov/images/Montioring-Job-memory-brownbag.pdf>`_
+#     """
+#     def __init__(self,compute_node):
+#         """"""
+#         command = "ssh {} vmstat 1 1".format(compute_node)
+#         try:
+#             lines = remote.run(command,attempts=1,raise_exception=True)
+#         except Exception as e:
+#             remote.err_print(type(e),e)
+#     #---------------------------------------------------------------------------    
         
 #===============================================================================
 # test code below

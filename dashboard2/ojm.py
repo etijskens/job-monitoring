@@ -1,5 +1,19 @@
 """
-The off-line job monitor
+The off-line job monitor. This script is run on a login node as::
+
+    > cd data/jobmonitor
+    > module purge
+    > module load hopper/2016a
+    > module load Python
+    > python ojm.py
+    
+This will produce an overview of the activity of the script as will as an 
+overview of ill-performing jobs.
+
+If you want to run the offline job monitor continuously::
+
+    > nohup ./start.sh &
+
 """
 from cfg import Cfg
 from progress import printProgress
