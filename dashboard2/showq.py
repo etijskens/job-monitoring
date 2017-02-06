@@ -122,34 +122,41 @@ class ShowqJobEntry:
     #---------------------------------------------------------------------------    
     def get_effic(self,mhost_cores=None):
         """
-        def get_effic(self,mhost_cores=None):
+        Return the (uncorrected) efficiciency.
+        
+        :param int mhost_cores: number of cores used on mhost.
+         
+        According to the Adaptive Computing developers:
+        
+        "For active jobs Moab reads in the "resources_used.cput" from Torque and 
+        divides that by the total processor seconds dedicated to the job. This 
+        is the efficiency of the job. Note that this can be a delayed statistic 
+        coming from torque so EFFIC is just an estimate until after a job has 
+        finished." 
+        
+        The efficiency is termed uncorrected because in the current setup of hopper
+        Torque has no information from the slave nodes, and hence assumes that 
+        *resources_used.cput* is 0 for slave nodes. E.g. for a job running on 2 nodes,
+        each with 100% efficiency, Moab will report an efficiency of 50% after 100s 
+        because it is computed as:
+            
+        - total processor seconds: 100s * 2 nodes * 20 cores per node = 4000
+        - *resources_used.cput* on the master node = 100s * 20 cores per node = 2000
+        - *resources_used.cput* on the slave  node = 100s * 20 cores per node = 2000, 
+          but Torque sees 0s * 20 cores per node = 0s and thus reports (2000+0)/4000 = 50%
+         
+        We can scale the efficiency to the master node as
+         
+        - 50% * number_of_cores_used_by_all_nodes / number_of_cores_used_by_master_node 
+          = 50% * 40/20 = 100%
+        
+        Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
+        and thus cannot correct the effic value, unless this value is provided as mhost_cores.
+         
+        The 'corrected' value, obviously provides only information on the master host node
+        rather than on the entire job! It is our hope that if the master node is performing 
+        well, the slave nodes do so too.
         """
-#         Return the (uncorrected) efficiciency. 
-#         According to the Adaptive Computing developers:
-#         "For active jobs Moab reads in the "resources_used.cput" from Torque and 
-#         divides that by the total processor seconds dedicated to the job. This 
-#         is the efficiency of the job. Note that this can be a delayed statistic 
-#         coming from torque so EFFIC is just an estimate until after a job has 
-#         finished." 
-#         The efficiency is termed uncorrected because in the current setup of hopper
-#         Torque has no information from the slave nodes, and hence assumes that 
-#         "resources_used.cput" is 0 for slave nodes. E.g. for a job running on 2 nodes,
-#         each with 100% efficiency, Moab will report an efficiency of 50% after 100s 
-#         because it is computed as:
-#             total processor seconds: 100s * 2 nodes * 20 cores per node = 4000
-#             resources_used.cput on master node = 100s * 20 cores per node = 2000
-#             resources_used.cput on slave  node = 100s * 20 cores per node = 2000
-#         but Torque sees 0s * 20 cores per node = 0s and thus reports (2000+0)/4000 = 50%
-#         
-#         We can scale the efficiency to the master node as 
-#             50% * number_of_cores_used_by_all_nodes / number_of_cores_used_by_master_node 
-#               = 50% * 40/20 = 100%
-#         Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
-#         and thus cannot correct the effic value, unless this value is provided as mhost_cores.
-#         
-#         The 'corrected' value, obviously provides only information on the master host node
-#         rather than on the entire job! It is our hope that if the master node is performing 
-#         well, the slave nodes do so too.
         numerator   = self.data['@StatPSUtl']
         denominator = self.data['@StatPSDed']
         try:
@@ -297,7 +304,6 @@ class JobSample:
         for node in nodes[1:]:
             self.details += '\n'+nohdr+node
             
-        self.details += '\nother jobs on {}: '.format(self.showq_job_entry.get_mhost())
         self.details += self.mhost_job_info.str() 
             
         if self.data_qstat.node_sar:
