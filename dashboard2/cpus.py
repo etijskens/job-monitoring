@@ -106,6 +106,7 @@ class Data_sar:
     :param str compute_node: name of a compute node. 
     :param list cores: a list of core ids.
     """
+    line_fmt = '{:3}{:10.2f}{:10.2f}{:10.2f}{:10.2f}{:10.2f}{:10.2f}'
     #---------------------------------------------------------------------------    
     def __init__(self,compute_node,cores=None):
         self.compute_node = compute_node
@@ -160,6 +161,22 @@ class Data_sar:
                     self.columns[hdr].append(value) 
                 else:
                     self.columns[hdr].append(float(value)) # percentage
+        # compute averages
+        for hdr,column in self.columns.items():
+            if hdr=='CPU':
+                column.insert(0,'avg')
+            else:
+                avg = sum(column)/len(column)
+                column.insert(0,avg)
+        avg_line = Data_sar.line_fmt.format(self.columns['CPU'    ][0]
+                                           ,self.columns['%user'  ][0]
+                                           ,self.columns['%nice'  ][0]
+                                           ,self.columns['%system'][0]
+                                           ,self.columns['%iowait'][0]
+                                           ,self.columns['%steal' ][0]
+                                           ,self.columns['%idle'  ][0]
+                                           )
+        self.data_cores.insert(1,avg_line)
     #---------------------------------------------------------------------------    
     def get(self,column_header,core_id):
         """

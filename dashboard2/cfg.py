@@ -12,7 +12,7 @@ class Cfg:
     """
     A "namespace" class for storing configuration parameters (as static variables).
     """
-    effic_threshold = 95
+    effic_threshold = 99.9
     """ Efficiency threshold [%]: jobs with an efficiency below this threshold will be 
     reported. """
     

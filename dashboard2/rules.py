@@ -19,7 +19,7 @@ class Rule:
     """
     def __init__(self,warning='',severity=1):
         self.severity = severity
-        self.warning = '' 
+        self.warning = warning
     #---------------------------------------------------------------------------
     def check(self,job_sample):
         """
@@ -47,11 +47,9 @@ class EfficiencyThresholdRule(Rule):
     #---------------------------------------------------------------------------
     def check(self,job_sample):
         """ Reimplementation of :func:`Rule.check`. """
-        effic = job_sample.effic
-        if effic >= EfficiencyThresholdRule.effic_threshold:
+        if job_sample.get_effic() >= EfficiencyThresholdRule.effic_threshold:
             return ''
-        
-        msg = self.warning+': {}%. '.format(effic)
+        msg = self.warning+': {:5.2f}%. '.format( job_sample.get_effic() )
         return msg
     #---------------------------------------------------------------------------
 
@@ -100,10 +98,8 @@ class ResourcesWellUsedRule (Rule):
                     return ''
         else: # multinode job
             #todo : as not all cores are in use, check that the job uses nearly all available memory. 
-            mem_reqd = job_sample.parent_job.get_memory_requested()
-            mem_used = job_sample.parent_job.get_memory_used(self.timestamp)
-            mem_used_or_reqd = max(mem_reqd,mem_used)
-            mem_available = cluster_properties[current_cluster]['hopper_mem_avail_gb'](job_sample.data_qstat.node_cores.keys())
+            mem_used_or_reqd = job_sample.get_mem()
+            mem_available = cluster_properties[current_cluster]['mem_avail_gb'](job_sample.get_nodes())
             if mem_used_or_reqd >= ResourcesWellUsedRule.minimum_memory_fraction * mem_available:
                 return ''
         # The rule is not satisfied

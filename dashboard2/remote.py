@@ -228,7 +228,7 @@ class Command(CommandBase):
         else:
             raise TypeError('Expecting "str" for command.')
         if 'ssh' in self.command:
-            self.timeout = 60
+            self.timeout = 10
         else:
             self.timeout = 5
     #---------------------------------------------------------------------------
@@ -250,7 +250,7 @@ class Command(CommandBase):
         try:
             self.sout, self.serr = proc.communicate(timeout=self.timeout)
         except subprocess.TimeoutExpired as e:
-#             err_print('Command', ' '.join(self.command), 'timed out after',self.timeout,'seconds.')
+            err_print('Command', ' '.join(self.command), 'timed out after',self.timeout,'seconds.')
             proc.kill()
             self.sout, self.serr = proc.communicate()
             raise e

@@ -3,7 +3,7 @@ Functions and classes for sampling the *showq* output.
 """
 
 import remote
-from cpus       import cpu_list
+from cpus       import cpu_list,Data_sar
 from script     import Data_jobscript
 from cfg        import Cfg
 from qstatx     import Data_qstat
@@ -120,11 +120,11 @@ class ShowqJobEntry:
         state = self.data['@State']
         return state
     #---------------------------------------------------------------------------    
-    def get_effic(self,mhost_cores=None):
+    def get_effic(self,ncores_used_on_mhost=0):
         """
-        Return the (uncorrected) efficiciency.
+        Return the efficiciency, corrected or uncorrected (*ncores_used_on_mhost*>0).
         
-        :param int mhost_cores: number of cores used on mhost.
+        :param int ncores_used_on_mhost: if larger than zero, represents the number of cores used on mhost and the corrected efficiency is computed (see below), otherwise the uncorrected efficiency is returned.  
          
         According to the Adaptive Computing developers:
         
@@ -151,21 +151,24 @@ class ShowqJobEntry:
           = 50% * 40/20 = 100%
         
         Note that the JobEntry by itself does NOT know the number_of_cores_used_by_master_node
-        and thus cannot correct the effic value, unless this value is provided as mhost_cores.
+        and thus cannot correct the effic value, unless this value is provided as ncores_used_on_mhost.
          
         The 'corrected' value, obviously provides only information on the master host node
         rather than on the entire job! It is our hope that if the master node is performing 
-        well, the slave nodes do so too.
+        well, the slave nodes do so too.        
         """
+        remote.err_print('method showq.ShowqJobEntry.get_effic(self, ncores_used_on_mhost) may '
+                         'report incorrect values. Use JobSample.get_effic() instead.'
+                        ) 
         numerator   = self.data['@StatPSUtl']
         denominator = self.data['@StatPSDed']
         try:
             value = 100*float(numerator)/float(denominator) # [%]
-            if not mhost_cores is None and Cfg.correct_effic:
-                # scale the effic value to the master host node only, i.e. "correct" it.
-                value *= self.get_ncores()/mhost_cores 
         except ZeroDivisionError:
             value = 100 # seems safe
+        if ncores_used_on_mhost>0 and Cfg.correct_effic:
+            # scale the effic value to the master host node only, i.e. "correct" it.
+            value *= self.get_ncores()/ncores_used_on_mhost 
         return round(value,2)
     #---------------------------------------------------------------------------    
     def get_username(self):
@@ -219,20 +222,11 @@ class JobSample:
         self.data_qstat      = Data_qstat( job.jobid )
         self.mhost_job_info  = NeighbouringJobInfo(self)
         self.data_sar        = None
-
-#         # Compute whether all cores are in use
-#         total_ncores_in_use = job_entry.get_ncores()
-#         nnodes = self.data_qstat.get_nnodes()
-#         total_ncores_available = nnodes*cluster_properties[current_cluster]['ncores_per_node'] 
-#         self.all_cores_in_use = (total_ncores_in_use==total_ncores_available)
-
-        ncores_mhost = len(cpu_list(self.data_qstat.node_cores[job_entry.get_mhost()]))   # number of cores used by this job on the master compute node
-        self.effic = job_entry.get_effic(ncores_mhost) # corrected if Cfg.correct_effic==True
         self.details = ''       
     #---------------------------------------------------------------------------
     def check_for_issues(self):
         """
-        returns True (False) if there are (aren't) issues 
+        Returns True (False) if there are (aren't) issues (all rules satisfied).
         """
         self.warnings = []
         self.overview = ''
@@ -246,7 +240,7 @@ class JobSample:
         
         if self.warnings:
             self.parent_job.nsamples_with_warnings += 1
-            if self.effic < EfficiencyThresholdRule.effic_threshold:
+            if self.get_effic() < EfficiencyThresholdRule.effic_threshold:
                 self.data_qstat.sar()
             return True
         else:
@@ -254,27 +248,24 @@ class JobSample:
     #---------------------------------------------------------------------------
     def compose_overview(self):
         """
+        Compose and return the overview text.
         """
         if self.warnings:
             if self.overview:
                 return self.overview
-            description = self.description()
-            self.overview = '\n'+( description.ljust(32)+self.warnings[0] ).ljust(68)+str(self.parent_job.jobscript.loaded_modules())
+            desc = '{} {} {} {}|{}'.format( self.showq_job_entry.get_jobid()
+                                          , self.showq_job_entry.get_username()
+                                          , self.showq_job_entry.get_mhost()
+                                          , self.get_nnodes()
+                                          , self.get_ncores()
+                                          )
+            self.overview = '\n'+( desc.ljust(32)+self.warnings[0] ).ljust(68)+str(self.parent_job.jobscript.loaded_modules())
             spaces = '\n'+(32*' ')
             for w in self.warnings[1:]:
                 self.overview += spaces+w             
         else:
             self.overview = ''
         return self.overview
-    #---------------------------------------------------------------------------
-    def description(self):
-        desc = '{} {} {} {}|{}'.format( self.showq_job_entry.get_jobid()
-                                      , self.showq_job_entry.get_username()
-                                      , self.showq_job_entry.get_mhost()
-                                      , self.get_nnodes()
-                                      , self.get_ncores()
-                                      )
-        return desc
     #---------------------------------------------------------------------------
     def compose_details(self):
         """
@@ -291,7 +282,7 @@ class JobSample:
             rule = rules.the_rules[irule]
             if count>0:
                 self.details +='\n  {:25}: {:5}'.format(rule.warning,count)
-                
+
         self.details += '\nwalltime used/remaining: {} / {}'.format( self.data_qstat.get_walltime_used()
                                                                    , self.data_qstat.get_walltime_remaining()
                                                                    )
@@ -308,6 +299,20 @@ class JobSample:
             
         if self.data_qstat.node_sar:
             self.details += title_line('sar -P ALL 1 1',width=100,char='-')
+            if len(self.data_qstat.node_sar)>1:
+                avgs = ['all']
+                avgs.extend(6*[0])
+                for data_sar in self.data_qstat.node_sar.values():
+                    avgs[1] += data_sar.columns['%user'  ][0]
+                    avgs[2] += data_sar.columns['%nice'  ][0]
+                    avgs[3] += data_sar.columns['%system'][0]
+                    avgs[4] += data_sar.columns['%iowait'][0]
+                    avgs[5] += data_sar.columns['%steal' ][0]
+                    avgs[6] += data_sar.columns['%idle'  ][0]
+                nnodes = self.get_nnodes()
+                for i in range(1,7):
+                    avgs[i]/=nnodes
+                self.details += 'AVERAGE  '+Data_sar.line_fmt.format(*avgs)+'\n'
             for node, data_sar in self.data_qstat.node_sar.items():
                 for line in data_sar.data_cores:
                     self.details += node+' '+line +'\n'
@@ -339,37 +344,99 @@ class JobSample:
             nd = '??:??:??'
         return nd
     #---------------------------------------------------------------------------        
-    def overall_efficiency(self):
+    def get_effic(self,mhost_only=Cfg.correct_effic):
         """
-        cputime (used by all cores) / (ncores*walltime)
-        should be close to one for well-performing jobs.
+        Compute the efficiency from the qstat output as:: 
+        
+            effic = 100 * cputime_used_by_all_cores / (ncores*walltime) # percentage 
+        
+        This should be close to 100% for well-performing jobs.
+        
+        :param bool mhost_only: if True, assumes that the reported efficiency is based on information from the mhost node only, an scales the reported value accordingly.
+        :return: efficiency as a percentage. 
+        
+        .. note:: If mhost_only is *True*, and this is a multi-node job, the value reurned 
+                  provides **only** information on the mhost node. If it is above the threshold,
+                  it is assumed/hoped that the slave nodes are well-performing too, but there is
+                  no guarantee. To be certain, the sar output must be inspected (but it is only
+                  generated if the mhost is below the threshold). See allso :func:`ShowqJobEntry.get_effic()  
         """
-        walltime = hhmmss2s( self.data_qstat.data['resources_used']['walltime'] )
-        cputime  = hhmmss2s( self.data_qstat.data['resources_used']['cput'] )
-        ncores   = self.get_ncores()
-        effic = 100*cputime/(ncores*walltime)
-        if effic > 100:
-            if effic > 105:
-                print('WARNING: overall efficiency > 100 :',effic)
-            effic = 100
-        return effic
+        if not hasattr(self,'effic'):
+            # we must first compute it.
+            try:
+                walltime                   = hhmmss2s( self.data_qstat.data['resources_used']['walltime'] )
+                cputime_used_by_all_cores  = hhmmss2s( self.data_qstat.data['resources_used']['cput'] )
+                ncores   = self.get_ncores()
+                self.effic = 100*cputime_used_by_all_cores/(ncores*walltime)
+                if mhost_only:
+                    ncores_on_mhost = self.get_ncores(cn='mhost')
+                    self.effic *= (ncores/ncores_on_mhost) 
+            except Exception as e:
+                remote.err_print('JobSample.get_effic():',type(e),e)
+                self.effic = 0
+            
+        return self.effic
     #---------------------------------------------------------------------------
-    def overall_efficiency_as_str(self,):
+    def get_ncores(self,cn='all'):
         """
-        should be close to one for well-performing jobs.
+        :param str cn: compute node name. If equal to 'mhost' the master node is taken.
+        :return: number of cores in use on compute node *cn*. If *cn* is *None* the total number of cores in use
+        :rtype: int 
         """
-        try:
-            effic = self.overall_efficiency()
-            s = '{:5.2f} %'.format(effic)
-        except KeyError:
-            s = '?'
-        return s
-    #---------------------------------------------------------------------------
-    def get_ncores(self):        
-        return self.showq_job_entry.get_ncores()
+        if cn=='all':
+            return self.showq_job_entry.get_ncores()
+        else:
+            if cn=='mhost':
+                mhost = self.get_mhost(short=True)
+                cores = cpu_list(self.data_qstat.node_cores[mhost])
+            else:
+                cores = cpu_list(self.data_qstat.node_cores[cn])
+            return len(cores)
     #---------------------------------------------------------------------------        
     def get_nnodes(self):        
         return self.data_qstat.get_nnodes()
+    #---------------------------------------------------------------------------        
+    def get_nodes(self):
+        """
+        Return a list of the (short) node names on which the job is running.
+        """        
+        nodes = list(self.data_qstat.node_cores.keys())
+        return nodes
+    #---------------------------------------------------------------------------
+    def get_jobid(self):
+        return self.data_qstat.jobid
+    #---------------------------------------------------------------------------
+    def get_mhost(self,short=False):
+        """
+        Return the name of the mhost node, e.g. 'r5c2cn01.hopper.antwerpen.vsc'.
+        If *short==True*, it is shortened to the part in front of the first dot: i.e. 
+        'r5c2cn01'. 
+        """
+        mhost = self.data_qstat.get_master_node()
+        if short:
+            mhost = mhost.split('.',1)[0]
+        return mhost
+    #---------------------------------------------------------------------------
+    def get_mem(self):
+        """
+        :return: the maximum of memory used and requested.
+        """
+        memreqd = self.data_qstat.get_mem_requested()
+        memused = self.data_qstat.get_mem_used()
+        mem = max(memreqd,memused)
+        return mem
+    #---------------------------------------------------------------------------
+#     def get_effic(self):
+#         """
+#         from showq or data_qstqt
+#         """
+#         if 
+#         if Cfg.correct_effic:
+#             ncores_used_on_mhost = self.get_ncores(cn='mhost')
+#         else:
+#             ncores_used_on_mhost = 0 
+#         value = self.showq_job_entry.get_effic(ncores_used_on_mhost)
+#         return value
     #---------------------------------------------------------------------------
 
 #===============================================================================
@@ -380,26 +447,24 @@ class NeighbouringJobInfo:
     :param JobSample job_sample:
     """
     def __init__(self,job_sample):
-        self.jobid  = [job_sample.parent_job.jobid]
+        jobid1 = job_sample.get_jobid()
+        self.jobid  = [jobid1]
         self.nnodes = [job_sample.get_nnodes()]
         self.ncores = [job_sample.get_ncores()]
-        self.effic  = [job_sample.showq_job_entry.get_effic()]
-        memreqd = job_sample.data_qstat.get_mem_requested()
-        memused = job_sample.data_qstat.get_mem_used()
-        self.memory = [max(memreqd,memused)]
+        self.effic  = [job_sample.get_effic ()]
+        self.memory = [job_sample.get_mem   ()]
         
-        self.mhost = job_sample.showq_job_entry.get_mhost()
+        self.mhost = job_sample.get_mhost(short=True)
         neighbouring_jobs = job_sample.parent_job.sampler.mhost_jobs[self.mhost]
+        
         for jobid2 in neighbouring_jobs:
-            if jobid2 != job_sample.parent_job.jobid:
-                self.jobid.append(jobid2)
-                job2 = job_sample.sampler.jobs[jobid][timestamp]
-                self.nnodes .append(job2.get_nnodes())
-                self.ncores .append(job2.get_ncores())
-                self.effic  .append(job2.get_effic      (timestamp))
-                memreqd = job2.get_memory_requested()
-                memused = job2.get_memory_used(timestamp)
-                self.memory.append(max(memreqd,memused))
+            if jobid2 != jobid1:
+                job2 = job_sample.sampler.jobs[jobid2][timestamp]
+                self.jobid .append(jobid2)
+                self.nnodes.append(job2.get_nnodes())
+                self.ncores.append(job2.get_ncores())
+                self.effic .append(job2.get_effic(timestamp))
+                self.memory.append(job2.get_mem  (timestamp))
         self.n = len(neighbouring_jobs)
         if self.n>1:
             self.jobid .append('total:')
@@ -412,6 +477,9 @@ class NeighbouringJobInfo:
             self.memused.append(sum(self.memused))
     #---------------------------------------------------------------------------        
     def str(self):
+        """
+        Format self as a *str*.
+        """
         s = '\nother jobs on {}: '.format(self.mhost)
         if self.n == 1:
             s += 'None.'
@@ -531,13 +599,28 @@ class Job:
             os.remove(fname)
         except:
             print('failed to remove',fname)
+
     #---------------------------------------------------------------------------
-    def get_nnodes(self,timestamp=None):
+    def get_sample(self,timestamp=None):
+        """
+        Return the sample corresponding to *timestamp*, or, if it is *None*, the last sample.
+        """
         if timestamp is None:
             sample = od_last(self.samples)[1]
         else:
             sample = self.samples[timestamp]
+        return sample
+    #---------------------------------------------------------------------------
+    def get_nnodes(self,timestamp=None):
+        sample = self.get_sample(timestamp)
         return sample.get_nnodes()
+    #---------------------------------------------------------------------------
+    def get_mem(self,timestamp=None):
+        """
+        :return: the maximum of memory used and requested for the given timestamp.
+        """
+        sample = self.get_sample(timestamp)
+        return sample.get_mem()
     #---------------------------------------------------------------------------
     def pickle(self,prefix,only_if_warnings=True,verbose=False):
         if (only_if_warnings and self.nsamples_with_warnings) \

@@ -33,7 +33,7 @@ def hopper_mem_avail_gb(node):
             mem += hopper_mem_avail_gb(ni)
         return mem
     else:
-        raise TypeError('Expected str, or list of str.')
+        raise TypeError('Expected str, or list of str, got '+str(type(node)))
 #===============================================================================
 def hopper_ncores_per_node(node):
     """
