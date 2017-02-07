@@ -240,8 +240,6 @@ class JobSample:
         
         if self.warnings:
             self.parent_job.nsamples_with_warnings += 1
-            if self.get_effic() < EfficiencyThresholdRule.effic_threshold:
-                self.data_qstat.sar()
             return True
         else:
             return False
@@ -259,7 +257,7 @@ class JobSample:
                                           , self.get_nnodes()
                                           , self.get_ncores()
                                           )
-            self.overview = '\n'+( desc.ljust(32)+self.warnings[0] ).ljust(68)+str(self.parent_job.jobscript.loaded_modules())
+            self.overview = '\n'+( desc.ljust(32)+self.warnings[0] ).ljust(68)+str(self.parent_job.jobscript.loaded_modules(short=True))
             spaces = '\n'+(32*' ')
             for w in self.warnings[1:]:
                 self.overview += spaces+w             

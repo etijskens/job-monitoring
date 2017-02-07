@@ -49,7 +49,12 @@ class EfficiencyThresholdRule(Rule):
         """ Reimplementation of :func:`Rule.check`. """
         if job_sample.get_effic() >= EfficiencyThresholdRule.effic_threshold:
             return ''
-        msg = self.warning+': {:5.2f}%. '.format( job_sample.get_effic() )
+
+        sar_effic = job_sample.data_qstat.sar()
+        if sar_effic >= EfficiencyThresholdRule.effic_threshold:
+            msg = '?? Efficiency: qstat->{:5.2f}%, sar->{:5.2f}%.'.format(job_sample.get_effic(),sar_effic) 
+            return msg
+        msg = self.warning+': {:5.2f}%. '.format(job_sample.get_effic())
         return msg
     #---------------------------------------------------------------------------
 

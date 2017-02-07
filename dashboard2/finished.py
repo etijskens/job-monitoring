@@ -479,7 +479,7 @@ if __name__=='__main__':
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
                        ,offline = args.offline
-                       ,folder  = args.folder
+                       ,local_folder  = args.folder
                        )
     finished.show()
     sys.exit(app.exec_())

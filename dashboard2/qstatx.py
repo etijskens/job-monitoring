@@ -9,6 +9,7 @@ Classes and functions
 """
 import remote
 from collections import OrderedDict
+from mycollections import od_first
 from constants import str2gb
 from cpus import cpu_list, Data_sar
 from remote import CommandBase
@@ -189,13 +190,37 @@ class Data_qstat:
         """
         Run linux command sar on all nodes of the job and store processed output
         in an OrderedDict.
+        
+        :return: The all node qverage efficiency as reported by sar. 
         """
         for compute_node,cores in self.node_cores.items():
             cores = cpu_list(cores)
             # find the load of these cores (sar)
             # can't avoid disturbing the compute node this time
             data_sar = Data_sar(compute_node,cores)
-            self.node_sar[compute_node] = data_sar                
+            self.node_sar[compute_node] = data_sar       
+        if len(self.node_sar)==1:
+            mhost_data_sar = od_first(self.node_sar)[1]
+            self.sar_effic = mhost_data_sar.columns['%user'][1]
+        else:
+            # we still need to comput the all node average
+            avgs = [self.get_ncores()]
+            avgs.extend(6*[0])
+            for data_sar in self.node_sar.values():
+                avgs[1] += data_sar.columns['%user'  ][0]
+                avgs[2] += data_sar.columns['%nice'  ][0]
+                avgs[3] += data_sar.columns['%system'][0]
+                avgs[4] += data_sar.columns['%iowait'][0]
+                avgs[5] += data_sar.columns['%steal' ][0]
+                avgs[6] += data_sar.columns['%idle'  ][0]
+            nnodes = self.get_nnodes()
+            for i in range(1,7):
+                avgs[i]/=nnodes
+            self.sar_effic = avgs[1]
+            all_node_avg = 'AVERAGE  '+Data_sar.line_fmt.format(*avgs)
+            mhost_data_sar = od_first(self.node_sar)[1]
+            mhost_data_sar.data_cores.insert(0,)
+        return self.sar_effic
     #---------------------------------------------------------------------------        
     def is_interactive_job(self):
         """
