@@ -45,7 +45,10 @@ def is_ojm_running(kill=False):
                         print(type(e),e)
                         print('failed:',cmd.str())
         if found:
-            print('ojm.py is running on',login_nodes[login_node],'\n')
+            if kill:
+                print('ojm.py was running on',login_nodes[login_node],'but has just been killed.\n')
+            else:
+                print('ojm.py is running on',login_nodes[login_node],'\n')
     if not result:
         remote.err_print('ojm.py is not running on',current_cluster,'\n')
     return result 

@@ -164,7 +164,7 @@ class Data_sar:
         # compute averages
         for hdr,column in self.columns.items():
             if hdr=='CPU':
-                column.insert(0,'avg')
+                column.insert(0,len(self.data_cores)-1)
             else:
                 avg = sum(column)/len(column)
                 column.insert(0,avg)

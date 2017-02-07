@@ -300,7 +300,7 @@ class JobSample:
         if self.data_qstat.node_sar:
             self.details += title_line('sar -P ALL 1 1',width=100,char='-')
             if len(self.data_qstat.node_sar)>1:
-                avgs = ['all']
+                avgs = [self.get_ncores()]
                 avgs.extend(6*[0])
                 for data_sar in self.data_qstat.node_sar.values():
                     avgs[1] += data_sar.columns['%user'  ][0]
