@@ -1,5 +1,6 @@
-dashboard script
+dashboard module
 ================
+
 .. automodule:: dashboard
     :members:
     :undoc-members:

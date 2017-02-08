@@ -30,6 +30,7 @@ Contents:
    remote
    remote_install
    rules
+   sar
    script
    showq
    timestamp

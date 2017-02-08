@@ -123,6 +123,20 @@ def list_of_lines(s):
     """
     return s.split('\n')
 #===============================================================================
+def list_of_non_empty_lines(s):
+    """
+    A post-processor function that splits the output of a command in a list of non-empty lines
+    (newlines and empty lines are removed).
+    
+    :rtype: a list of non-empty lines (str)
+    """
+    lines = list_of_lines(s)
+    nonempty_lines = []
+    for line in lines:
+        if line:
+            nonempty_lines.append(line)
+    return nonempty_lines
+#===============================================================================
 
 #===============================================================================
 class CommandBase:

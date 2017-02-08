@@ -3,6 +3,10 @@ import datetime
 timestamp_format = '%Y.%m.%d.%Hh%M' 
 #===============================================================================   
 def get_timestamp():
+    """
+    :return: a timestamp based on the current time.
+    :rtype: str
+    """
     timestamp = datetime.datetime.now().strftime(timestamp_format)
     return timestamp
 #===============================================================================   

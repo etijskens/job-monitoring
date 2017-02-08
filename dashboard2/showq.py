@@ -3,11 +3,10 @@ Functions and classes for sampling the *showq* output.
 """
 
 import remote
-from cpus       import cpu_list,Data_sar
 from script     import Data_jobscript
 from cfg        import Cfg
 from qstatx     import Data_qstat
-from rules      import EfficiencyThresholdRule
+from sar        import Data_sar
 from timestamp  import get_timestamp
 from titleline  import title_line
 import          rules
@@ -31,7 +30,11 @@ def run_showq():
     6. remove job array entries.
     """
     data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
-    job_entries = data_showq['Data']['queue']['job']
+    try:
+        job_entries = data_showq['Data']['queue']['job']
+    except:
+        remote.err_print('No jobs running.')
+        exit(0)
     # remove jobs
     #  . which have no mhost set
     #  . which have jobid like '390326[1]' (=job array jobs)
@@ -172,8 +175,8 @@ class ShowqJobEntry:
         return round(value,2)
     #---------------------------------------------------------------------------    
     def get_username(self):
-        """ 
-        def get_username(self):
+        """
+        :return: username of the user that started this job. 
         """
 #         :return str: username. 
         value = self.data['@User']
@@ -181,7 +184,7 @@ class ShowqJobEntry:
     #---------------------------------------------------------------------------    
     def get_mhost(self,short=True):
         """ 
-        def get_mhost(self,short=True):
+        :return: the mhost node (node on wcich the job started.
         """
 #         :return str: name of the master compute node. 
         value = self.data['@MasterHost']
@@ -191,7 +194,7 @@ class ShowqJobEntry:
     #---------------------------------------------------------------------------    
     def get_ncores(self):
         """ 
-        :return int: total number of cores for this job  
+        :return int: total number of cores for this job . 
         """
         value = int( self.data['@ReqProcs'] )
         return value
@@ -226,7 +229,7 @@ class JobSample:
     #---------------------------------------------------------------------------
     def check_for_issues(self):
         """
-        Returns True (False) if there are (aren't) issues (all rules satisfied).
+        :return: True (False) if there are (aren't) issues (all rules satisfied) for this JobSample 
         """
         self.warnings = []
         self.overview = ''
@@ -246,7 +249,8 @@ class JobSample:
     #---------------------------------------------------------------------------
     def compose_overview(self):
         """
-        Compose and return the overview text.
+        :return: the overview text of the JobSample, composed when asked the first time.
+        :rtype: str
         """
         if self.warnings:
             if self.overview:
@@ -267,6 +271,8 @@ class JobSample:
     #---------------------------------------------------------------------------
     def compose_details(self):
         """
+        :return: the details text of the JobSample, composed when asked the first time.
+        :rtype: str
         """
         if self.details or not self.warnings:
             return self.details
@@ -322,6 +328,11 @@ class JobSample:
         return self.details
     #---------------------------------------------------------------------------        
     def walltime(self,hours=False):
+        """
+        :param bool hours: select the return type and format: *True->int*=#hours, *False->str*=HH:MM:SS.
+        :return: the current walltime as reported by qstat, either as the number of hours *(int)*, or as HH:MM:SS *(str)*. 
+        :rtype: int or str.
+        """
         try:
             wt = self.data_qstat.data['resources_used']['walltime']
             if hours:
@@ -333,13 +344,16 @@ class JobSample:
                 wt = '??:??:??'
         return wt
     #---------------------------------------------------------------------------        
-    def nodedays(self,):
+    def nodedays(self):
+        """
+        :return: the number of node days comsumed so far, as a formatted str. 
+        """
         try:
             wt = self.data_qstat.data['resources_used']['walltime']
             nd = hhmmss2s(wt)*self.get_nnodes()/(3600*24)
             nd = '{:.3f} node days'.format(nd)
         except KeyError:
-            nd = '??:??:??'
+            nd = '?'
         return nd
     #---------------------------------------------------------------------------        
     def get_effic(self,mhost_only=Cfg.correct_effic):
@@ -357,7 +371,8 @@ class JobSample:
                   provides **only** information on the mhost node. If it is above the threshold,
                   it is assumed/hoped that the slave nodes are well-performing too, but there is
                   no guarantee. To be certain, the sar output must be inspected (but it is only
-                  generated if the mhost is below the threshold). See allso :func:`ShowqJobEntry.get_effic()  
+                  generated if the mhost is below the threshold). 
+                  See allso :func:`ShowqJobEntry.get_effic()`.
         """
         if not hasattr(self,'effic'):
             # we must first compute it.
@@ -381,27 +396,25 @@ class JobSample:
         :return: number of cores in use on compute node *cn*. If *cn* is *None* the total number of cores in use
         :rtype: int 
         """
-        if cn=='all':
-            return self.showq_job_entry.get_ncores()
-        else:
-            if cn=='mhost':
-                mhost = self.get_mhost(short=True)
-                cores = cpu_list(self.data_qstat.node_cores[mhost])
-            else:
-                cores = cpu_list(self.data_qstat.node_cores[cn])
-            return len(cores)
+        return self.data_qstat.node_cores.ncores(cnode=cn)
     #---------------------------------------------------------------------------        
-    def get_nnodes(self):        
+    def get_nnodes(self):  
+        """
+        :return: the number of nodes used as reported by qstat.
+        """      
         return self.data_qstat.get_nnodes()
     #---------------------------------------------------------------------------        
     def get_nodes(self):
         """
-        Return a list of the (short) node names on which the job is running.
+        :return: a list of the (short) node names on which the job is running.
         """        
         nodes = list(self.data_qstat.node_cores.keys())
         return nodes
     #---------------------------------------------------------------------------
     def get_jobid(self):
+        """
+        :return: the jobid
+        """
         return self.data_qstat.jobid
     #---------------------------------------------------------------------------
     def get_mhost(self,short=False):
@@ -410,9 +423,10 @@ class JobSample:
         If *short==True*, it is shortened to the part in front of the first dot: i.e. 
         'r5c2cn01'. 
         """
-        mhost = self.data_qstat.get_master_node()
         if short:
-            mhost = mhost.split('.',1)[0]
+            mhost = self.data_qstat.node_cores.mhost
+        else:
+            mhost = self.data_qstat.get_master_node()
         return mhost
     #---------------------------------------------------------------------------
     def get_mem(self):
@@ -553,22 +567,37 @@ class Job:
     #---------------------------------------------------------------------------    
     def add_sample(self,job_entry,timestamp):
         """
+        Create a sample with the current *timestamp* from *job_entry*, and add it to the current Job.
         """
         self.last_timestamp = timestamp
         self.samples[timestamp] = JobSample(job_entry,self,timestamp)
     #---------------------------------------------------------------------------
     def timestamps(self):
+        """
+        :return: an ordered list of timestamps in this Job.
+        """
         keys = list(self.samples.keys())
         return keys
     #---------------------------------------------------------------------------
-    def index(self,timestamp):
-        index = self.timestamps().index(timestamp)
-        return index
+#     def index(self,timestamp):
+#         """
+#         :return: the index of a timestamp.
+#         """
+#         index = self.timestamps().index(timestamp)
+#         return index
     #---------------------------------------------------------------------------
     def nsamples(self):
+        """
+        :return: the number of samples in this Job, so far.
+        """        
         return len(self.samples)
     #---------------------------------------------------------------------------
     def check_for_issues(self,timestamp):
+        """
+        Verify wheter this job violates any of the rules for well-performing jobs.
+        
+        :return: an overview line if not all rules are satisfied, empty *str* otherwise
+        """
         sample = self.samples[timestamp] 
         if sample.check_for_issues():
             #there are issues
@@ -580,40 +609,51 @@ class Job:
         return overview_line
     #---------------------------------------------------------------------------
     def overall_memory_used(self):
+        """
+        :return: the maximum amount of memory used by this Job, over all its samples.
+        """
         mem_used = 0
         for sample in self.samples.values():
             mem_used = max(mem_used,sample.data_qstat.get_mem_used())
         return mem_used
     #---------------------------------------------------------------------------
     def get_details(self,timestamp):
+        """
+        :return the details text for *timestamp*.
+        """
         if not timestamp in self.samples:
             timestamp = self.timestamps()[-1]
         details = self.samples[timestamp].compose_details()
         return details
     #---------------------------------------------------------------------------
     def remove_file(self):
+        """
+        Remove the *.pickled* file corresponding to this Job.
+        """
         fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
         try:
             os.remove(fname)
         except:
-            print('failed to remove',fname)
-
+            remote.err_print('failed to remove',fname)
     #---------------------------------------------------------------------------
-    def get_sample(self,timestamp=None):
+    def get_sample(self,timestamp='last'):
         """
         Return the sample corresponding to *timestamp*, or, if it is *None*, the last sample.
         """
-        if timestamp is None:
+        if timestamp=='last':
             sample = od_last(self.samples)[1]
         else:
             sample = self.samples[timestamp]
         return sample
     #---------------------------------------------------------------------------
-    def get_nnodes(self,timestamp=None):
+    def get_nnodes(self,timestamp='last'):
+        """
+        :return: the numer of nodes as reported by the sample at *timestap* 
+        """
         sample = self.get_sample(timestamp)
         return sample.get_nnodes()
     #---------------------------------------------------------------------------
-    def get_mem(self,timestamp=None):
+    def get_mem(self,timestamp='last'):
         """
         :return: the maximum of memory used and requested for the given timestamp.
         """
@@ -621,6 +661,13 @@ class Job:
         return sample.get_mem()
     #---------------------------------------------------------------------------
     def pickle(self,prefix,only_if_warnings=True,verbose=False):
+        """
+        Pickle this job.
+        
+        :param str prefix: the receiving directory.
+        :param bool only_if_warnings: do only pickle if the job has warnings.
+        :param bool verbose: if *True*, print the destination file. 
+        """
         if (only_if_warnings and self.nsamples_with_warnings) \
         or (not only_if_warnings): 
             if 'running' in prefix:
@@ -636,7 +683,14 @@ class Job:
 #===============================================================================   
 def unpickle(prefix,username,jobid,timestamp='',verbose=False):
     """
-    This is the counterpart of Job.pickle()
+    Counterpart of Job.pickle()
+    
+    :param str prefix: source directory 
+    :param str username: the username of the Job
+    :param str jobid: jobid of the job.
+    :param str timestamp: last sampling timestamp of the job.
+    :param bool verbose: print the filename of the unpickled file.
+    :return: a Job object.
     """
 #     :returns: the Job object that was pickled, or None if inexisting.
     if 'running' in prefix:
@@ -655,6 +709,12 @@ def unpickle(prefix,username,jobid,timestamp='',verbose=False):
     return job
 #===============================================================================   
 class Sampler:
+    """
+    Class that drives the sampling. 
+    
+    :param int interval: number of seconds between successive samples.
+    :param qMainWindow: If *None* prints a progress bar to the terminal during sampling, otherwise uses a Qt4:QProgressDialog.
+    """
     #---------------------------------------------------------------------------    
     def __init__(self,interval=None,qMainWindow=None):
         if interval is None:
@@ -671,6 +731,7 @@ class Sampler:
     #---------------------------------------------------------------------------    
     def sample(self,verbose=False,test__=False):
         """
+        Sample the running jobs on your local machine. 
         """
         # get relevan part of showq output
         job_entries = run_showq()
@@ -797,8 +858,7 @@ class Sampler:
     #---------------------------------------------------------------------------
     def get_remote_timestamp(self):
         """
-        returns the last sample's timestamp. If ojm.py is in the process of sampling
-        returns an empty string. 
+        :return: the last sample's timestamp from the offline job monitor. If ojm.py is in the process of sampling an empty string is returned. 
         """
         try:
             lines = remote.run('cd data/jobmonitor/running/; cat timestamp',post_processor=remote.list_of_lines)
@@ -808,8 +868,8 @@ class Sampler:
     #---------------------------------------------------------------------------
     def sample_offline(self):
         """
-        Check remote directory '~/data/jobmonitor/running for data on running jobs.
-        Copy them to the local directory ./offline/running
+        Sample the running jobs from the offline job monitor. The remote directory '~/data/jobmonitor/running'
+        examined to see if there are new samples available. These are copied to the local directory ./offline/running
         """
         shutil.rmtree('offline/running')
         os.makedirs('offline/running'  ,exist_ok=True)
@@ -841,10 +901,13 @@ class Sampler:
             self.n_entries += 1
         self.overviews[timestamp] = self.overview_list2str(self.overviews[timestamp])
     #---------------------------------------------------------------------------
-    def timestamp(self,i=-1):
-        return self.timestamps[i]
+#     def timestamp(self,i=-1):
+#         return self.timestamps[i]
     #---------------------------------------------------------------------------    
     def overview_list2str(self,overview_list,key=overview_by_user,reverse=True):
+        """
+        Sort the *overview_list* according to *key* and *reverse* and convert to plain text. 
+        """
         overview_list.sort(key=key,reverse=reverse)
         n_jobs = self.n_entries
         n_warn = len(overview_list)
@@ -853,17 +916,15 @@ class Sampler:
         return text
     #---------------------------------------------------------------------------
     def nsamples(self):
+        """
+        :return: the number of samples.
+        """
         return len(self.timestamps)
     #---------------------------------------------------------------------------
     def add_offline_job(self,job):
         """
-        Add an offline monitored job to the sampler        
+        Add an offline monitored *job* to the sampler.        
         """
-#         self.jobs    = {}                # {jobid    :Job object  }
-#         self.timestamps = []             # [timestamp]
-#         self.timestamp_jobs = ListDict() # {timestamp:[jobids]}
-#         self.overviews = OrderedDict()   # {timestamp:job_overview}
-
         self.jobs[job.jobid] = job
         for timestamp,job_sample in job.samples.items():
             od_add_list_item(self.timestamp_jobs,timestamp,job.jobid)
@@ -883,6 +944,9 @@ class Sampler:
                 overview.append(overview_line)                
     #---------------------------------------------------------------------------
     def when_done_adding_offline_jobs(self):
+        """
+        Sort offline monitored jobs.
+        """
         self.timestamps.sort()
         for jobid_list in self.timestamp_jobs.values():
             jobid_list.sort()

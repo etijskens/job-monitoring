@@ -67,8 +67,10 @@ class JobHistory:
             self.address = address_of(self.job.username)
         text = title_line('JOB MONITOR REPORT '+self.job.jobid,width=100, char='=',above=True)
         text += '\n'+self.address+'\n'
-        text += 'Overall efficiency: '+self.job.samples[self.job.last_timestamp].overall_efficiency_as_str()+'\n'
-        text += 'Overall memory use: {} GB\n'.format(round(self.job.overall_memory_used(),3))
+        text += 'Overall efficiency: ??{:5.2f}??%\n'.format(self.job.get_sample().get_effic())
+        # todo : this should perhaps come from trace job? otherwise it is erroneous.
+        text += 'Overall memory use: ??{}?? GB\n'.format(round(self.job.overall_memory_used(),3))
+        # tod  this as well?
         sample = od_first(self.job.samples)[1] 
         nnodes = sample.get_nnodes()
         ncores = sample.get_ncores()

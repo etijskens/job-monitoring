@@ -7,10 +7,13 @@ _test = False
 #===============================================================================
 class Data_jobscript:
     """
+    Class for storing and manipulating a job's job script
+    
+    :param str jobid: the job's jobid
+    :param str compute_node: name of the mhost node of the job.
     """
     #---------------------------------------------------------------------------    
     def __init__(self,jobid,compute_node):
-        """"""
         self.compute_node = compute_node # must be mhost
         self.jobid = jobid
         command = "ssh {} 'sudo cat /opt/moab/spool/torque/mom_priv/jobs/{}.hopper.SC'".format(compute_node,jobid)
@@ -32,8 +35,8 @@ class Data_jobscript:
                         , '# for hopper'
                         , '#PBS -l nodes=2:ppn=20'
                         , ''
-                        , '## if, in addition, you want to avoid that other (yours) jobs of you also could'
-                        , '## use this node, also add'
+                        , '== if, in addition, you want to avoid that other (yours) jobs of you also could'
+                        , '== use this node, also add'
                         , '# #PBS -l naccesspolicy=singlejob'
                         , '#PBS -W x=nmatchpolicy:exactnode'
                         , ''
@@ -89,6 +92,9 @@ class Data_jobscript:
         self.modules = None                    
     #---------------------------------------------------------------------------    
     def __str__(self):
+        """
+        Return a short - essential - version of the script.
+        """
         s = ''
         for line in self.clean:
             if '#PBS' in line and '-l' in line:
@@ -101,6 +107,10 @@ class Data_jobscript:
         return s[:-1]
     #---------------------------------------------------------------------------    
     def loaded_modules(self,short=False):
+        """
+        :return: a list of loaded modules.
+        :param bool short: if *True*, modules like 'hopper/2014a' are omitted and version information is omitted too.
+        """
         if not hasattr(self,'modules'):
             self.modules = None
         if self.modules is None:
@@ -126,12 +136,15 @@ class Data_jobscript:
             return modules
     #---------------------------------------------------------------------------    
     def isempty(self):
+        """
+        Test empty script.
+        """
         return len(self.clean)==0
     #---------------------------------------------------------------------------    
     
-################################################################################
-# test code below
-################################################################################
+#===============================================================================
+#== test code below ============================================================
+#===============================================================================
 if __name__=="__main__":
     _test = True
     

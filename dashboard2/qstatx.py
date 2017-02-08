@@ -8,12 +8,9 @@ Classes and functions
 
 """
 import remote
-from collections import OrderedDict
-from mycollections import od_first
-from constants import str2gb
-from cpus import cpu_list, Data_sar
-from remote import CommandBase
-
+from cpus import ExecHost, str2gb
+from mycollections import OrderedDict, od_first
+from sar import Data_sar
 #===============================================================================    
 def run_qstat_f(jobid):
     """
@@ -28,7 +25,7 @@ def run_qstat_f(jobid):
     result = remote.run("qstat -x -f "+jobid, post_processor=remote.xml_to_odict )
     if result is None:
         result = OrderedDict()
-        result['error'] = str(CommandBase.last_error_messages)
+        result['error'] = str(remote.CommandBase.last_error_messages)
     return result
     #---------------------------------------------------------------------------
 
@@ -51,7 +48,6 @@ class Data_qstat:
     #---------------------------------------------------------------------------    
     def __init__(self,jobid,offline_test__=False):
         self.jobid = jobid
-        
         if offline_test__:
             import xmltodict
             xml_dict = xmltodict.parse( open('qstat.xml').read() )
@@ -59,15 +55,8 @@ class Data_qstat:
         else:
             xml_dict = run_qstat_f(jobid)
             self.data = xml_dict['Data']['Job']
-
         self.node_sar   = OrderedDict()
-        self.node_cores = OrderedDict() 
-        nodes_str = self.get_exec_host()
-        words = nodes_str.split('+')
-        for word in words:
-            words2 = word.split('/')
-            node = words2[0].split('.',1)[0]
-            self.node_cores[node] = words2[1]
+        self.node_cores = ExecHost(self.get_exec_host()) 
     #---------------------------------------------------------------------------    
     def get_nnodes(self):
         """
@@ -81,10 +70,7 @@ class Data_qstat:
         :return: total number of cores allocated to this job.
         :rtype: int
         """
-        ncores = 0
-        for cores in self.node_cores.values():
-            ncores += len(cpu_list(cores))
-        return ncores
+        return self.node_cores.ncores_all
     #---------------------------------------------------------------------------    
     def get_exec_host(self):
         """
@@ -193,8 +179,8 @@ class Data_qstat:
         
         :return: The all node qverage efficiency as reported by sar. 
         """
-        for compute_node,cores in self.node_cores.items():
-            cores = cpu_list(cores)
+        for compute_node,cores in self.node_cores.data.items():
+            cores = cores[1]
             # find the load of these cores (sar)
             # can't avoid disturbing the compute node this time
             data_sar = Data_sar(compute_node,cores)

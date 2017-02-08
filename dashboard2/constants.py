@@ -78,25 +78,6 @@ class ES:
     white   = '\033[37m'
     default = '\033[39m'
 
-#===============================================================================    
-def str2gb(s):
-    """
-    Convert a string *s* containing and integer number and a unit (kb,mb,gb) to 
-    the number of GB. 
-    """
-    unit = s[-2:]
-    unit = unit.lower()
-    value = int(s[:-2])
-    if unit=='kb':
-        value /= 1024*1024
-    elif unit=='mb':
-        value /= 1024
-    elif unit=='gb':
-        pass
-    else:
-        raise ValueError('Unknown unit: '+s)
-    return value
-#===============================================================================    
 
 #===============================================================================    
 # test code below

@@ -114,7 +114,7 @@ class ResourcesWellUsedRule (Rule):
 #===============================================================================    
 class TooManyWarningsRule(Rule):
     """
-    not ok if there are more then 4 samples, and 25% or more of those have warnings
+    Warn that there are many warnings: if there are more then 4 samples, and 25% or more of those have warnings
     """
     mininum_samples = 4
     maximum_warnings = .25 # fraction
@@ -141,7 +141,8 @@ class TooManyWarningsRule(Rule):
 #===============================================================================    
 class NoModulesRule(Rule):
     """
-    not ok if the script has no modules
+    Verify the script loads some modules. If not it probably relies on system 
+    compilers and libraries, which are obsolete. 
     """
     #---------------------------------------------------------------------------
     def __init__(self):
