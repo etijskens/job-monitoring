@@ -61,8 +61,9 @@ class ExecHost:
 #===============================================================================    
 def str2gb(s):
     """
-    Convert a string *s* containing and integer number and a unit (kb,mb,gb) to 
-    the number of GB. 
+    :param str s: a string containing an integer number and a unit (kb,mb,gb), e.g. '1234kb'.
+    :return: number of GB, e.g. 1.205078125 (= 1234/1024)
+    :rtype: int or float 
     """
     unit = s[-2:]
     unit = unit.lower()
@@ -76,6 +77,8 @@ def str2gb(s):
     else:
         raise ValueError('Unknown unit: '+s)
     return value
+    #---------------------------------------------------------------------------
+
 #===============================================================================    
 def cpu_list__(s):
     """
@@ -165,7 +168,7 @@ def run_sar_P(compute_node,cores=None):
     #---------------------------------------------------------------------------    
             
 #===============================================================================
-# test code below
+#== test code below ============================================================
 #===============================================================================
 if __name__=="__main__":
 
@@ -190,7 +193,6 @@ if __name__=="__main__":
     print(cpus)
     assert cpus==[1]
     
-
     cpus = cpu_list__('1,3')
     print(cpus)
     assert cpus==[1,3]
