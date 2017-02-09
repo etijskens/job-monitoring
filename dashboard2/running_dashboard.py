@@ -29,7 +29,7 @@ import sys
 import argparse
 from is_ojm_running import is_ojm_running
 #===================================================================================================
-class Dashboard(QtGui.QMainWindow):
+class RunningDashboard(QtGui.QMainWindow):
     """
     Gui class based on PyQt 4.8 for job monitoring of running jobs.
 
@@ -46,9 +46,9 @@ class Dashboard(QtGui.QMainWindow):
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,offline=False,verbose=False,beep=True,test__=False):
         """"""
-        super(Dashboard, self).__init__()
-        self.ui = uic.loadUi('dashboard.ui',self)
-        self.setWindowTitle('Job monitor - RUNNING jobs')
+        super(RunningDashboard, self).__init__()
+        self.ui = uic.loadUi('running_dashboard.ui',self)
+        self.setWindowTitle('Job monitor - Running jobs dashboard')
         self.verbose = verbose
         self.beep    = beep
         self.test__  = test__
@@ -324,6 +324,9 @@ class Dashboard(QtGui.QMainWindow):
         clipboard = QtGui.qApp.clipboard()
         clipboard.setText(address)
     #---------------------------------------------------------------------------------------------------------
+    def closeEvent(self,event):
+        print('Closing Job monitor - running_dashboard.py')
+    #---------------------------------------------------------------------------------------------------------
     
 #=============================================================================================================
 #   the script:
@@ -341,17 +344,17 @@ if __name__=='__main__':
     parser.add_argument('--offline',action='store_true')
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
-    print('Dashboard.py: command line arguments:',args)
+    print('running_dashboard.py: command line arguments:',args)
     
     if args.offline:
         is_ojm_running()
         
     Cfg.sampling_interval = args.interval
-    dashboard = Dashboard(verbose =     args.verbose
-                         ,beep    = not args.no_beep
-                         ,test__  =     args.test__
-                         ,offline =     args.offline
-                         )
+    dashboard = RunningDashboard( offline =     args.offline
+                                , beep    = not args.no_beep
+                                , verbose =     args.verbose
+                                , test__  =     args.test__
+                                )
     dashboard.show()
     
     sys.exit(app.exec_())

@@ -1,7 +1,0 @@
-finished module
-===============
-
-.. automodule:: finished
-    :members:
-    :undoc-members:
-    :show-inheritance:

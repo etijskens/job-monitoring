@@ -299,7 +299,7 @@ class JobSample:
         for node in nodes[1:]:
             self.details += '\n'+nohdr+node
             
-        self.details += self.mhost_job_info.str() 
+        self.details += self.mhost_job_info.to_str() 
             
         if self.data_qstat.node_sar:
             self.details += title_line('sar -P ALL 1 1',width=100,char='-')
@@ -329,7 +329,7 @@ class JobSample:
     #---------------------------------------------------------------------------        
     def walltime(self,hours=False):
         """
-        :param bool hours: select the return type and format: *True->int*=#hours, *False->str*=HH:MM:SS.
+        :param bool hours: select the return type and format: *True->int* = #hours, *False->str* = HH:MM:SS.
         :return: the current walltime as reported by qstat, either as the number of hours *(int)*, or as HH:MM:SS *(str)*. 
         :rtype: int or str.
         """
@@ -488,7 +488,7 @@ class NeighbouringJobInfo:
             self.effic.append( effic/self.ncores[-1] )
             self.memused.append(sum(self.memused))
     #---------------------------------------------------------------------------        
-    def str(self):
+    def to_str(self):
         """
         Format self as a *str*.
         """

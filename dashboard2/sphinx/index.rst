@@ -11,14 +11,12 @@ Contents:
 .. toctree::
    :maxdepth: 3
    
-   dashboard
-   finished
+   completed_dashboard
+   running_dashboard
    
    cfg
    constants
    cpus
-   dashboard
-   finished
    ignoresignals
    is_ojm_running
    logindetails
@@ -35,8 +33,8 @@ Contents:
    showq
    timestamp
    titleline
-   visit
-   
+   tracejob
+   visit   
 
 Indices and tables
 ==================

@@ -1,5 +1,5 @@
 """
-Main gui program for job monitoring of **finished** jobs. The showq command is sampled every 15 minutes 
+Main gui program for job monitoring of **completed** jobs. The showq command is sampled every 15 minutes 
 (configurable in cfg.Cfg). Sampling can either done on the local machine or on a login node.
 
 Useful command line arguments:
@@ -109,9 +109,9 @@ def default_local_folder(analyze_offline_data):
     else:
         return 'completed/'
 #===================================================================================================
-class Finished(QtGui.QMainWindow):
+class CompletedDashboard(QtGui.QMainWindow):
     """
-    Gui class for inspecting finished jobs, remotely or locally.
+    Gui class for inspecting completed jobs, either remotely or locally sampled.
     
     Useful arguments:
     
@@ -124,14 +124,13 @@ class Finished(QtGui.QMainWindow):
     :param bool test__: for testing the gui
     """
     #---------------------------------------------------------------------------------------------------------         
-    #---------------------------------------------------------------------------------------------------------         
     def __init__(self,offline=False,local_folder='',verbose=False
                      ,test__ =False
                      ):
-        super(Finished, self).__init__()
-        self.ui = uic.loadUi('finished.ui',self)
+        super(CompletedDashboard, self).__init__()
+        self.ui = uic.loadUi('completed_dashboard.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
-        self.setWindowTitle('Job monitor - FINISHED jobs')
+        self.setWindowTitle('Job monitor - Completed jobs dashboard')
         self.verbose = verbose
         self.test__  = test__
         self.analyze_offline_data = offline
@@ -139,7 +138,7 @@ class Finished(QtGui.QMainWindow):
             self.local_folder = default_local_folder(self.analyze_offline_data)
         else:
             self.local_folder = local_folder # where finished.py looks for finished jobs. 
-        #   If not equal to Finished.default_local_folder, no new finished jobs
+        #   If not equal to CompletedDashboard.default_local_folder, no new finished jobs
         #   are copied from the remote folder.
         self.fetch_remote = (local_folder=='')
         
@@ -153,7 +152,7 @@ class Finished(QtGui.QMainWindow):
         self.ui.qwDetails .setFont(font)
 
         if self.analyze_offline_data:
-            os.makedirs(Finished.default_local_folder,exist_ok=True)
+            os.makedirs(CompletedDashboard.default_local_folder,exist_ok=True)
             os.makedirs(self.local_folder            ,exist_ok=True)
             os.makedirs(os.path.join(self.local_folder,'issues'    ),exist_ok=True)
             os.makedirs(os.path.join(self.local_folder,'non_issues'),exist_ok=True)
@@ -478,6 +477,9 @@ class Finished(QtGui.QMainWindow):
             self.current_jobh.filepath = dest
             self.append_to_overview_line(filename,' archived > '+archive)
     #---------------------------------------------------------------------------------------------------------
+    def closeEvent(self,event):
+        print('Closing Job monitor - completed_dashboard.py')
+    #---------------------------------------------------------------------------------------------------------
 #=============================================================================================================
 # the script
 #=============================================================================================================
@@ -491,15 +493,15 @@ if __name__=='__main__':
     parser.add_argument('--offline',action='store_true')
     parser.add_argument('--folder','-f',action='store',type=str,default='')
     args = parser.parse_args()
-    print('Finished.py: command line arguments:',args)
+    print('completed_dashboard.py: command line arguments:',args)
     if args.offline:
         is_ojm_running()
         
-    finished = Finished(verbose = args.verbose
-                       ,test__  = args.test__
-                       ,offline = args.offline
-                       ,local_folder  = args.folder
-                       )
+    finished = CompletedDashboard(offline = args.offline
+                                 ,local_folder = args.folder
+                                 ,verbose = args.verbose
+                                 ,test__  = args.test__
+                                 )
     finished.show()
     sys.exit(app.exec_())
 

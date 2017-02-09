@@ -215,7 +215,7 @@ class CommandBase:
         
         assert False # should never happen
     #---------------------------------------------------------------------------
-    def str(self):
+    def to_str(self):
         """
         Convert the command to a str and return it.
         """
@@ -425,7 +425,7 @@ if __name__=='__main__':
     result = cmd.execute()
     print(result)
     result = cmd.execute(post_processor=list_of_lines)
-    print(cmd.str(),result)
+    print(cmd.to_str(),result)
 
     cmd = Command('cat test')
     try:
@@ -438,6 +438,6 @@ if __name__=='__main__':
     connect_to_login_node()
     cmd = RemoteCommand('cd data/jobmonitor/ ; ls')
     result = cmd.execute()
-    print(cmd.str()+'\n',result)
+    print(cmd.to_str()+'\n',result)
     
     print('\n--finished--')
