@@ -4,7 +4,8 @@ Main gui program for job monitoring of **finished** jobs. The showq command is s
 
 Useful command line arguments:
 
-- ``--offline`` : use the offline sampler
+- ``--offline`` : use the offline sampler.
+- ``--folder=<local_folder>`` : look for reports in local folder *<local_folder>* rather than the default folder.
 
 The offline sampler must be started on a login node as::
 
@@ -98,6 +99,16 @@ class JobHistory:
     #---------------------------------------------------------------------------------------------------------         
 
 #===================================================================================================
+def default_local_folder(analyze_offline_data):
+    """
+    :param bool analyze_offline_data: analyze data from the offline sampler
+    :return: the default local folder for completed job reports. (depends on offline-or-not)
+    """
+    if analyze_offline_data:
+        return 'offline/completed/'
+    else:
+        return 'completed/'
+#===================================================================================================
 class Finished(QtGui.QMainWindow):
     """
     Gui class for inspecting finished jobs, remotely or locally.
@@ -112,13 +123,11 @@ class Finished(QtGui.QMainWindow):
     :param bool verbose: more or less printing.
     :param bool test__: for testing the gui
     """
-    default_local_folder = 'offline/completed/'
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,offline=False,local_folder='offline/completed/',verbose=False
+    #---------------------------------------------------------------------------------------------------------         
+    def __init__(self,offline=False,local_folder='',verbose=False
                      ,test__ =False
                      ):
-        """
-        """
         super(Finished, self).__init__()
         self.ui = uic.loadUi('finished.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
@@ -126,10 +135,13 @@ class Finished(QtGui.QMainWindow):
         self.verbose = verbose
         self.test__  = test__
         self.analyze_offline_data = offline
-        self.local_folder = local_folder # where finished.py looks for finished jobs. 
+        if not local_folder:
+            self.local_folder = default_local_folder(self.analyze_offline_data)
+        else:
+            self.local_folder = local_folder # where finished.py looks for finished jobs. 
         #   If not equal to Finished.default_local_folder, no new finished jobs
         #   are copied from the remote folder.
-        self.fetch_remote = (self.local_folder==Finished.default_local_folder)
+        self.fetch_remote = (local_folder=='')
         
         self.ignore_signals = False
         self.current_jobh = None
@@ -191,22 +203,23 @@ class Finished(QtGui.QMainWindow):
                     filenames_remote = []
 
                 for filename in filenames_remote:
-                    if not self.local_folder+filename in filenames_local:
+                    local_filepath = os.path.join(self.local_folder,filename)
+                    if not local_filepath in filenames_local:
                         try:
-                            print('copying',remote_path+filename,'to',self.local_folder,'...',end='')
+                            remote_filepath = os.path.join(remote_path,filename)
+                            print('copying',remote_filepath,'to',self.local_folder,'...',end='')
                             
-                            remote.copy_remote_to_local( self.local_folder+filename
-                                                       , remote_path+filename
-                                                       , rename=remote_path+filename+'_done'
+                            remote.copy_remote_to_local( local_filepath
+                                                       , remote_filepath
+                                                       , rename=remote_filepath+'_done'
                                                        )
                             print('copied')
-                            filenames_local.append(self.local_folder+filename)
+                            filenames_local.append(os.path.join(self.local_folder,filename))
                         except Exception as e:
                             remote.err_print(type(e),e)
                             continue
         else:
-            self.local_folder  = 'completed/'
-            filenames_local = glob.glob(self.local_folder+pattern)
+            filenames_local = glob.glob(os.path.join(self.local_folder,pattern))
             
         for filepath in filenames_local:
             filename = filepath.rsplit('/')[-1]
@@ -299,8 +312,10 @@ class Finished(QtGui.QMainWindow):
         Move the cursor in the overview to line *lineno*.
         """
         cursor = self.ui.qwOverview.textCursor()
-        for i in range(lineno):
+        i=0
+        while i<lineno:
             cursor.movePosition(QtGui.QTextCursor.Down)
+            i+=1
             
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
         self.overview_lineno = lineno
@@ -474,10 +489,12 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline',action='store_true')
-    parser.add_argument('--folder' ,action='store',type=str,default=Finished.default_local_folder)
+    parser.add_argument('--folder','-f',action='store',type=str,default='')
     args = parser.parse_args()
     print('Finished.py: command line arguments:',args)
-    is_ojm_running()
+    if args.offline:
+        is_ojm_running()
+        
     finished = Finished(verbose = args.verbose
                        ,test__  = args.test__
                        ,offline = args.offline
