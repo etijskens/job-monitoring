@@ -3,6 +3,7 @@ Classes and functions for defining and applying rules to filter ill-performing
 jobs in the showq output. 
 """
 from constants import cluster_properties, current_cluster
+from cfg import Cfg
 
 #===============================================================================    
 class Rule:
@@ -38,7 +39,7 @@ class EfficiencyThresholdRule(Rule):
     This rule checks that the efficiency of a :class:`JobSample` object is above 
     :class:`EfficiencyThresholdRule.effic_threshold`.
     """
-    effic_threshold = 70 # percentage
+    effic_threshold = Cfg.effic_threshold # percentage
     """ Efficiency threshold [%]: jobs with an efficiency below this threshold will be 
     reported. """
 #---------------------------------------------------------------------------    

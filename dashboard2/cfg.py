@@ -3,10 +3,7 @@ Module for configuring the application.
 
 Class Cfg
 =========
-
 """
-import rules
-
 #===============================================================================
 class Cfg: 
     """
@@ -47,5 +44,3 @@ class Cfg:
     matically set.
     """
     #---------------------------------------------------------------------------
-        
-rules.EfficiencyThresholdRule.effic_threshold = Cfg.effic_threshold
