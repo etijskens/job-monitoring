@@ -114,7 +114,7 @@ class Data_sar:
     #---------------------------------------------------------------------------    
     def verify_load(self,threshold):
         """
-        Returns *True* if all cores have a load > *threshold*, *False* otherwise.
+        Returns *True* iff all cores have a load > *threshold*.
         """
         self.threshold = threshold # used by self.message()
         percent_user = self.columns['%user']
@@ -128,7 +128,7 @@ class Data_sar:
     #---------------------------------------------------------------------------    
     def message(self,fmt=False):
         """
-        Format the data in a message and return it.
+        Format the sar output data in a message and return it.
         """
         cpu            = self.columns['CPU'    ]
         percent_user   = self.columns['%user'  ]
