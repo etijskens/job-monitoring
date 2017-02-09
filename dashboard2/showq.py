@@ -7,13 +7,13 @@ from script     import Data_jobscript
 from cfg        import Cfg
 from qstatx     import Data_qstat
 from sar        import Data_sar
-from timestamp  import get_timestamp
 from titleline  import title_line
 import          rules
 from mycollections import OrderedDict,od_add_list_item,od_last
 
 import pickle,os,shutil
 from time       import sleep
+import datetime
 
 # list of users we want to ignore for the time being...
 ignore_users = []
@@ -206,6 +206,18 @@ def overview_by_user(arg):
     Sort key for sorting warnings by username
     """
     return arg.split(' ',1)[1]
+    #---------------------------------------------------------------------------    
+
+#===============================================================================   
+timestamp_format = '%Y.%m.%d.%Hh%M' 
+#===============================================================================   
+def get_timestamp_now():
+    """
+    :return: a timestamp based on the current time.
+    :rtype: str
+    """
+    timestamp = datetime.datetime.now().strftime(timestamp_format)
+    return timestamp
     #---------------------------------------------------------------------------    
 
 #===============================================================================
@@ -774,7 +786,7 @@ class Sampler:
             job.pickle('completed/',verbose=True)
             if Cfg.offline:
                 job.remove_file()
-        timestamp = get_timestamp()
+        timestamp = get_timestamp_now()
         if Cfg.offline:
             os.makedirs ('running',exist_ok=True)
             if os.path.exists('running/timestamp'):

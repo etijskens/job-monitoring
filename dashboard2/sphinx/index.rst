@@ -32,7 +32,6 @@ Contents:
    sar
    script
    showq
-   timestamp
    titleline
    tracejob
    visit   
