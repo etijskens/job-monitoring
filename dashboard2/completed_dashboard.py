@@ -504,5 +504,3 @@ if __name__=='__main__':
                                  )
     finished.show()
     sys.exit(app.exec_())
-
-    print('\n-- finished --')

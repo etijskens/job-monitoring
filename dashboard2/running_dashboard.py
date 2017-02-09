@@ -358,5 +358,3 @@ if __name__=='__main__':
     dashboard.show()
     
     sys.exit(app.exec_())
-
-    print('\n-- finished --')
