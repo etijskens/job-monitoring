@@ -132,6 +132,7 @@ class CompletedDashboard(QtGui.QMainWindow):
                      ,test__ =False
                      ):
         super(CompletedDashboard, self).__init__()
+        # file 'completed_dashboard.ui' cam be modifed using qt creator
         self.ui = uic.loadUi('completed_dashboard.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
         self.setWindowTitle('Job monitor - Completed jobs dashboard')

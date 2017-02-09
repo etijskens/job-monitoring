@@ -50,6 +50,7 @@ class RunningDashboard(QtGui.QMainWindow):
     def __init__(self,offline=False,verbose=False,beep=True,test__=False):
         """"""
         super(RunningDashboard, self).__init__()
+        # file 'running_dashboard.ui' cam be modifed using qt creator
         self.ui = uic.loadUi('running_dashboard.ui',self)
         self.setWindowTitle('Job monitor - Running jobs dashboard')
         self.verbose = verbose
