@@ -17,6 +17,7 @@ Contents:
    cfg
    constants
    cpus
+   es
    ignoresignals
    is_ojm_running
    logindetails

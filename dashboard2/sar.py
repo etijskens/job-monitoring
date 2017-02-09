@@ -7,7 +7,7 @@ Classes and functions
 
 """
 import remote
-from constants import ES
+from es import ES
 
 _test = False
 

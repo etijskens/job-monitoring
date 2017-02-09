@@ -1,11 +1,15 @@
 """
-Main gui program for job monitoring of **completed** jobs. The showq command is sampled every 15 minutes 
-(configurable in cfg.Cfg). Sampling can either done on the local machine or on a login node.
+Main gui program for job monitoring of **completed** jobs. Every 15 minutes 
+(configurable in :class:`cfg.Cfg`) performance critical parameters are extracted from 
+``showq -r`` and ``qstat <jobid>`` output and - if the job has issues - saved in a report.
+This is called *sampling*. Sampling can done online (i.e. by your own lap/desktop), or offline (i.e. on a login node).
+When a job has completed, a final report is saved, and shown by the gui.
+In the offline case, this application retrieves the reports from a remote directory. 
 
 Useful command line arguments:
 
 - ``--offline`` : use the offline sampler.
-- ``--folder=<local_folder>`` : look for reports in local folder *<local_folder>* rather than the default folder.
+- ``--folder=<local_folder>`` or ``-f=<local_folder>``: look for reports in local folder *<local_folder>* rather than the default folder.
 
 The offline sampler must be started on a login node as::
 

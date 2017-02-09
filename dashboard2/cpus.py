@@ -7,7 +7,7 @@ Classes and functions
 
 """
 import remote
-from constants import ES
+from es import ES
 from mycollections import OrderedDict,od_first
 
 _test = False

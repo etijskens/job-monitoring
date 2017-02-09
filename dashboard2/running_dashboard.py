@@ -1,6 +1,9 @@
 """
-Main gui program for job monitoring of **running** jobs. The showq command is sampled every 15 minutes 
-(configurable in cfg.Cfg). Sampling can either done on the local machine or on a login node.
+Main gui program for job monitoring of **running** jobs. Every 15 minutes 
+(configurable in :class:`cfg.Cfg`) performance critical parameters are extracted from 
+``showq -r`` and ``qstat <jobid>`` output and - if the job has issues - saved in a report.
+This is called *sampling*. Sampling can done online (i.e. by your own lap/desktop), or offline (i.e. on a login node).
+In the offline case, this application retrieves the reports from a remote directory. 
 
 Useful command line arguments:
 
@@ -20,7 +23,7 @@ classes and functions
 """
 from showq import Sampler
 from cfg import Cfg
-from constants import ES
+from es import ES
 from mail import address_of
 from ignoresignals import IgnoreSignals
 

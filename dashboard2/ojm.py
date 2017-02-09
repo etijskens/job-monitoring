@@ -1,5 +1,5 @@
 """
-The off-line job monitor. This script is run on a login node as::
+The off-line job monitor does offline sampling. This script is run on a login node as::
 
     > cd data/jobmonitor
     > module purge
