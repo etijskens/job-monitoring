@@ -13,7 +13,7 @@ from time import sleep
 
 import logindetails
 from cfg import Cfg
-from constants import current_cluster,cluster_properties
+from cluster import current_cluster,cluster_properties
 
 #===============================================================================
 def err_print(*args):

@@ -15,7 +15,7 @@ Contents:
    running_dashboard
    
    cfg
-   constants
+   cluster
    cpus
    es
    ignoresignals

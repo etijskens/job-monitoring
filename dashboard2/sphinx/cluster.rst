@@ -1,7 +1,7 @@
-constants module
+cluster module
 ================
 
-.. automodule:: constants
+.. automodule:: cluster
     :members:
     :undoc-members:
     :show-inheritance:

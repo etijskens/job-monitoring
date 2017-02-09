@@ -169,6 +169,12 @@ def run_sar_P(compute_node,cores=None):
 #===============================================================================
 if __name__=="__main__":
 
+    assert str2gb('1gb')==1
+    assert str2gb('1GB')==1
+    assert str2gb('10GB')==10
+    assert str2gb('1024MB')==1
+    assert str2gb('1048576kb')==1
+
     eh = ExecHost("r5c1cn08.hopper.antwerpen.vsc/0-19+r5c6cn05.hopper.antwerpen.vsc/0-19")
     assert eh.mhost=='r5c1cn08'
     assert eh.ncores()==40

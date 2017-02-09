@@ -2,7 +2,7 @@
 Classes and functions for defining and applying rules to filter ill-performing 
 jobs in the showq output. 
 """
-from constants import cluster_properties, current_cluster
+from cluster import cluster_properties, current_cluster
 from cfg import Cfg
 
 #===============================================================================    

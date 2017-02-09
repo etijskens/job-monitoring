@@ -9,7 +9,7 @@ Classes and functions
 import remote
 import argparse
 import mycollections
-from constants import current_cluster
+from cluster import current_cluster
 
 #===============================================================================    
 def is_ojm_running(kill=False):

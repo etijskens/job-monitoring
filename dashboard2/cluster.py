@@ -56,20 +56,12 @@ cluster_properties = {'hopper':{'ncores_per_node' : hopper_ncores_per_node
 #===============================================================================    
 current_cluster = 'hopper'
 """ name of the cluster which we are monitoring."""
+#===============================================================================    
 
 #===============================================================================    
-# test code below
+#== test code below ============================================================
 #===============================================================================    
 if __name__=="__main__":
-    print(ES.bold+ES.red+'bold'+ES.normal+'normal')
-    for i in range(4):
-        print(ES.bell)
-        
-    assert str2gb('1gb')==1
-    assert str2gb('1GB')==1
-    assert str2gb('10GB')==10
-    assert str2gb('1024MB')==1
-    assert str2gb('1048576kb')==1
     
     node_fmt = 'r5c{}cn0{}'
     for c in range(1,4):
