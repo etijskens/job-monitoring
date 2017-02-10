@@ -47,7 +47,10 @@ class Data_tracejob:
     #---------------------------------------------------------------------------------------------------------
     def get_effic(self):
         """
-        Return overall efficiency from tracejob output. 
+        :return: overall efficiency from tracejob output. 
+        
+        .. note:: This is also subject to the problem that moab currently is ignorant
+                  about the slave nodes.
         """
         if not hasattr(self,'effic'):
             walltime = hhmmss2s(self.data['resources_used.walltime'])
@@ -62,7 +65,10 @@ class Data_tracejob:
     #---------------------------------------------------------------------------------------------------------
     def get_mem_used(self):
         """
-        Return overall memory use of the job from tracejob output.
+        :return: overall memory use of the job from tracejob output.
+
+        .. note:: This is also subject to the problem that moab currently is ignorant
+                  about the slave nodes.
         """
         gb = str2gb(self.data['resources_used.mem'])
         return gb

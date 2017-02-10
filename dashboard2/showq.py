@@ -722,8 +722,9 @@ def unpickle(prefix,username,jobid,timestamp='',verbose=False):
 #===============================================================================   
 class Sampler:
     """
-    Class that drives the sampling. 
-    
+    Class that does the sampling, either through :func:`sample` or :func:`sample_offline`.
+    The frequency of sampling is determined by the caller.
+        
     :param int interval: number of seconds between successive samples.
     :param qMainWindow: If *None* prints a progress bar to the terminal during sampling, otherwise uses a Qt4:QProgressDialog.
     """
@@ -743,7 +744,7 @@ class Sampler:
     #---------------------------------------------------------------------------    
     def sample(self,verbose=False,test__=False):
         """
-        Sample the running jobs on your local machine. 
+        Sample the running jobs online (locally). 
         """
         # get relevan part of showq output
         job_entries = run_showq()
