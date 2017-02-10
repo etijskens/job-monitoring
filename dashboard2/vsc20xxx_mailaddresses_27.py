@@ -1,4 +1,3 @@
-
 """ !!! Python script (v2.7) !!! 
 
 This python script (v2.7) retrieves (username,mail_address) pairs from the ldap
