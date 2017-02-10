@@ -8,7 +8,9 @@ Classes and functions
 #===================================================================================================
 class IgnoreSignals:
     """
-    Context manager class for ignoring signals in QMainWindow instances
+    Context manager class for ignoring signals in QMainWindow instances. The latter must have an
+    *ignore_signals* membr of type bool whose value is stored, set to True for the lifetime of the 
+    context manager and reset to its original value on exit.
     
     :param qwMainWindow: the QMainWindow in which signals have to be ignored.
     """

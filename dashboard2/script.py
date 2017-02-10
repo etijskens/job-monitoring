@@ -10,7 +10,7 @@ class Data_jobscript:
     Class for storing and manipulating a job's job script
     
     :param str jobid: the job's jobid
-    :param str compute_node: name of the mhost node of the job.
+    :param str compute_node: name of the mhost node of the job (moab keeps a copy of the job script on the mhost node).
     """
     #---------------------------------------------------------------------------    
     def __init__(self,jobid,compute_node):
@@ -93,7 +93,7 @@ class Data_jobscript:
     #---------------------------------------------------------------------------    
     def __str__(self):
         """
-        Return a short - essential - version of the script.
+        :return: a short - essential - version of the script. It is decorated using ascii escape characters.
         """
         s = ''
         for line in self.clean:
@@ -110,6 +110,8 @@ class Data_jobscript:
         """
         :return: a list of loaded modules.
         :param bool short: if *True*, modules like 'hopper/2014a' are omitted and version information is omitted too.
+        
+        The short version is for having a quick view of the program(s) that might be run in the job.
         """
         if not hasattr(self,'modules'):
             self.modules = None
@@ -137,7 +139,7 @@ class Data_jobscript:
     #---------------------------------------------------------------------------    
     def isempty(self):
         """
-        Test empty script.
+        Test for empty script.
         """
         return len(self.clean)==0
     #---------------------------------------------------------------------------    

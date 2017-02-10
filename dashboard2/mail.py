@@ -62,11 +62,11 @@ def load_mail_addresses():
 #===================================================================================================
 def refresh_mail_addresses():
     """
-    Obtain an up to date {(username,mail address)} dictionary. This is achieve by running a Python2.7
+    Obtain an up to date dictionary of username and mail addresses. This is achieved by running a Python2.7
     script on a login-node.
     """
     # first copy the script to my remote home directory, so i have the most recent version of it.
-    python_script = 'vsc20xxx_mailaddresses.py'
+    python_script = 'vsc20xxx_mailaddresses.py' # python 2.7 script because ituses module ldap 
     try:
         remote.copy_local_to_remote(python_script,python_script)
         command = pickle.load(open('config/retrieve_mail_addresses.pickled','rb'))

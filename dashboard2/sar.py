@@ -12,12 +12,19 @@ from es import ES
 #===============================================================================
 def run_sar_P(compute_node,cores=None):
     """
-    This function runs the linux command ``sar -P ALL 1 1`` on a compute node 
-    over ssh and returns its output as a list of lines. If cores is a list of core
-    numbers, the output for the other cores is discarded.
+    This function runs the linux command::
+        
+        sar -P ALL 1 1``
+    
+    on a compute node over ssh. It returns its output as a list of lines with 
+    contains the percentages of time the cores spend in *%user*, *%nice'*, 
+    *%system*, *%iowait*, *%steal*, *%idle* functions.
+
+    If cores is a list of core numbers, only the output for those cores is kept.
+    The header line kept too.
     
     :param str compute_node: name of a compute node. 
-    :param list cores: a list of core ids. 
+    :param list cores: a list of core ids for which the information is neede. 
     :returns: list with the relevant output lines
     """
     command = "ssh {} sar -P ALL 1 1".format(compute_node)
@@ -48,13 +55,18 @@ def run_sar_P(compute_node,cores=None):
 #===============================================================================
 class Data_sar:
     """
-    Class for storing and manipulating the output of ``sar -P ALL 1 1`` on a compute node.
+    Class for storing and manipulating the output of :func:`run_sar_P` on a compute node.
     The constructor arguments are the same as for :func:`run_sar_P`.
+    The output lines are transformed into an OrderedDict *self.columns* of column headers
+     ('cpu', '%user', '%system', '%iowait', '%steal', '%idle') and column data.
+    For each column the average over de selected cores is computed and added as the
+    first line after the header line.
     
     :param str compute_node: name of a compute node. 
     :param list cores: a list of core ids.
     """
     line_fmt = '{:3}{:10.2f}{:10.2f}{:10.2f}{:10.2f}{:10.2f}{:10.2f}'
+    """ Format string for formatting row data in the same way as the ``sar`` output. """ 
     #---------------------------------------------------------------------------    
     def __init__(self,compute_node,cores=None):
         self.compute_node = compute_node
@@ -84,13 +96,14 @@ class Data_sar:
                     self.columns[hdr].append(value) 
                 else:
                     self.columns[hdr].append(float(value)) # percentage
-        # compute averages
+        # compute averages and add them to the columns 
         for hdr,column in self.columns.items():
             if hdr=='CPU':
                 column.insert(0,len(self.data_cores)-1)
             else:
                 avg = sum(column)/len(column)
                 column.insert(0,avg)
+        # format the averages in a text line and add it after the header line
         avg_line = Data_sar.line_fmt.format(self.columns['CPU'    ][0]
                                            ,self.columns['%user'  ][0]
                                            ,self.columns['%nice'  ][0]
@@ -102,11 +115,10 @@ class Data_sar:
         self.data_cores.insert(1,avg_line)
     #---------------------------------------------------------------------------    
     def get(self,column_header,core_id):
-        """
-        Read the output value in the column with header *column_header* for row *core_id*.
-        
+        """        
         :param str column_header: header of the column.
         :param int core_id: core number 
+        :return: the value in the column with header *column_header* for row *core_id*.
         """
         irow = self.columns['CPU'].index(core_id)
         value = self.columns[column_header][irow]
@@ -126,9 +138,13 @@ class Data_sar:
             self.ok = True
         return self.ok
     #---------------------------------------------------------------------------    
-    def message(self,fmt=False):
+    def colored(self,fmt=False):
         """
-        Format the sar output data in a message and return it.
+        Format the sar output data in a using ascii escape sequences and return it.
+        Items that require your attention are in bold+red. '%nice' and '%steal'
+        are omitted.    
+        
+        .. note:: this method is no longer used.
         """
         cpu            = self.columns['CPU'    ]
         percent_user   = self.columns['%user'  ]

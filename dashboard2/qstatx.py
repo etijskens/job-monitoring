@@ -205,7 +205,7 @@ class Data_qstat:
             self.sar_effic = avgs[1]
             all_node_avg = 'AVERAGE  '+Data_sar.line_fmt.format(*avgs)
             mhost_data_sar = od_first(self.node_sar)[1]
-            mhost_data_sar.data_cores.insert(0,)
+            mhost_data_sar.data_cores.insert(0,all_node_avg)
         return self.sar_effic
     #---------------------------------------------------------------------------        
     def is_interactive_job(self):

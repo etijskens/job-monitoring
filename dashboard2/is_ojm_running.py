@@ -16,8 +16,8 @@ def is_ojm_running(kill=False):
     """
     Verifies if the offline job monitor is running on one of the login nodes.
     
-    :param kill: if True kills the associated processe(s)
-    :return: OrderedDict of {#login_node:[proces ids]}  on which the offline job monitor is running.
+    :param kill: if True kills the associated processe(s).
+    :return: OrderedDict of {#login_node:[proces ids]} on which the offline job monitor is running. If *kill==True* it is empty.
     """
     remote.Connection.verbose = False
     login_nodes = remote.cluster_properties[remote.current_cluster]['login_nodes']
