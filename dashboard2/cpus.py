@@ -54,6 +54,19 @@ class ExecHost:
         else:
             return len(self.data[cnode][1])
     #---------------------------------------------------------------------------
+    def nnodes(self):
+        """
+        :return: the number of compute nodes used by this job.  
+        """
+        return len(self.data)
+    #---------------------------------------------------------------------------
+    def nodes(self):
+        """
+        :return: the names of the compute nodes used by this job.
+        :rtype: list of str  
+        """
+        return len(self.data.keys())
+    #---------------------------------------------------------------------------
         
 #===============================================================================    
 def str2gb(s):

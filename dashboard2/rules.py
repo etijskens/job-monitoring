@@ -99,7 +99,7 @@ class ResourcesWellUsedRule (Rule):
                 # even after checking for other jobs on the node, not all cores are used
                 # mayby the used cores need all the memory:
                 mem_used_or_reqd = job_sample.mhost_job_info.memory[-1]
-                mem_available    = cluster_properties[current_cluster]['hopper_mem_avail_gb'](job_sample.mhost_job_info.mhost)
+                mem_available    = cluster_properties[current_cluster]['mem_avail_gb'](job_sample.mhost_job_info.mhost)
                 if mem_used_or_reqd >= ResourcesWellUsedRule.minimum_memory_fraction * mem_available:
                     return ''
         else: # multinode job

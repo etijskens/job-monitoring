@@ -11,6 +11,7 @@ import remote
 from cpus import ExecHost, str2gb
 from mycollections import OrderedDict, od_first
 from sar import Data_sar
+from remote import err_print
 #===============================================================================    
 def run_qstat_f(jobid):
     """
@@ -63,7 +64,7 @@ class Data_qstat:
         :return: number of nodes allocated to this job.
         :rtype: int
         """
-        return len( self.node_cores )
+        return self.node_cores.nnodes()
     #---------------------------------------------------------------------------
     def get_ncores(self):
         """

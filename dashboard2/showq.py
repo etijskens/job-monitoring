@@ -235,7 +235,7 @@ class JobSample:
         self.parent_job      = job
         self.timestamp       = timestamp
         self.data_qstat      = Data_qstat( job.jobid )
-        self.mhost_job_info  = NeighbouringJobInfo(self)
+        self.mhost_job_info  = None# NeighbouringJobInfo(self)
         self.data_sar        = None
         self.details = ''       
     #---------------------------------------------------------------------------
@@ -243,6 +243,7 @@ class JobSample:
         """
         :return: True (False) if there are (aren't) issues (all rules satisfied) for this JobSample 
         """
+        self.mhost_job_info  = NeighbouringJobInfo(self)
         self.warnings = []
         self.overview = ''
         self.details  = ''
@@ -471,6 +472,7 @@ class NeighbouringJobInfo:
     :param JobSample job_sample:
     """
     def __init__(self,job_sample):
+        timestamp = job_sample.timestamp
         jobid1 = job_sample.get_jobid()
         self.jobid  = [jobid1]
         self.nnodes = [job_sample.get_nnodes()]
@@ -483,12 +485,13 @@ class NeighbouringJobInfo:
         
         for jobid2 in neighbouring_jobs:
             if jobid2 != jobid1:
-                job2 = job_sample.sampler.jobs[jobid2][timestamp]
+                job2 = job_sample.parent_job.sampler.jobs[jobid2]
+                job2sample = job2.get_sample(timestamp)
                 self.jobid .append(jobid2)
-                self.nnodes.append(job2.get_nnodes())
-                self.ncores.append(job2.get_ncores())
-                self.effic .append(job2.get_effic(timestamp))
-                self.memory.append(job2.get_mem  (timestamp))
+                self.nnodes.append(job2sample.get_nnodes())
+                self.ncores.append(job2sample.get_ncores())
+                self.effic .append(job2sample.get_effic ())
+                self.memory.append(job2sample.get_mem   ())
         self.n = len(neighbouring_jobs)
         if self.n>1:
             self.jobid .append('total:')
@@ -498,7 +501,7 @@ class NeighbouringJobInfo:
             for i in range(self.n):                
                 effic += self.effic[i]*self.ncores[i]
             self.effic.append( effic/self.ncores[-1] )
-            self.memused.append(sum(self.memused))
+            self.memory.append(sum(self.memory))
     #---------------------------------------------------------------------------        
     def to_str(self):
         """
@@ -510,19 +513,19 @@ class NeighbouringJobInfo:
         else:
             fmt = '\n  **{}**{:3}|{:2} {}% {}GB'
             i = 0 
-            s = fmt.format( self.jobid  [i]
-                          , self.nnodes [i]
-                          , self.ncores [i]
-                          , self.effic  [i]
-                          , self.memused[i]
+            s = fmt.format( self.jobid [i]
+                          , self.nnodes[i]
+                          , self.ncores[i]
+                          , self.effic [i]
+                          , self.memory[i]
                           )
             fmt = fmt.replace('*',' ')
             for i in range(1,self.n):
-                s += fmt.format( self.jobid  [i]
-                               , self.nnodes [i]
-                               , self.ncores [i]
-                               , self.effic  [i]
-                               , self.memused[i]
+                s += fmt.format( self.jobid [i]
+                               , self.nnodes[i]
+                               , self.ncores[i]
+                               , self.effic [i]
+                               , self.memory[i]
                                )
         s+='\n'
         return s
@@ -665,6 +668,13 @@ class Job:
         sample = self.get_sample(timestamp)
         return sample.get_nnodes()
     #---------------------------------------------------------------------------
+    def get_ncores(self,timestamp='last'):
+        """
+        :return: the numer of nodes as reported by the sample at *timestap* 
+        """
+        sample = self.get_sample(timestamp)
+        return sample.get_ncores()
+    #---------------------------------------------------------------------------
     def get_mem(self,timestamp='last'):
         """
         :return: the maximum of memory used and requested for the given timestamp.
@@ -803,6 +813,8 @@ class Sampler:
             n_notok = 0 
             n_notok_stop = 2
             print('testing: n_ok_stop={}, n_notok_stop={}'.format(n_ok_stop,n_notok_stop)) 
+            
+        #pass 1 create jobs and job samples
         for i_entry,job_entry in enumerate(job_entries):
             if job_entry.get_state() != 'Running':
                 continue # we only analyze running jobs
@@ -831,7 +843,9 @@ class Sampler:
             else:
                 job = self.jobs[jobid]
                 job.add_sample(job_entry,timestamp)
-                
+        
+        #pass 2 add NeighbouringJobInfo and check the rules
+        for jobid,job in self.jobs.items():
             overview_line = job.check_for_issues(timestamp)
             if overview_line:
                 overview.append(overview_line)
