@@ -85,7 +85,7 @@ class RunningDashboard(QtGui.QMainWindow):
             self.sampler.sample_offline()
         else:
             self.sampler.sample(test__=self.test__)
-        timestamp = self.sampler.timestamp() 
+        timestamp = self.sampler.timestamps[-1] 
         if self.beep:
             print(ES.bell)
         
