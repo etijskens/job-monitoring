@@ -421,8 +421,7 @@ class JobSample:
         """
         :return: a list of the (short) node names on which the job is running.
         """        
-        nodes = list(self.data_qstat.node_cores.keys())
-        return nodes
+        return self.data_qstat.node_cores.nodes()
     #---------------------------------------------------------------------------
     def get_jobid(self):
         """

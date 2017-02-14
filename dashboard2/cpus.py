@@ -65,7 +65,7 @@ class ExecHost:
         :return: the names of the compute nodes used by this job.
         :rtype: list of str  
         """
-        return len(self.data.keys())
+        return list(self.data.keys())
     #---------------------------------------------------------------------------
         
 #===============================================================================    
