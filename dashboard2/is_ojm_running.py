@@ -22,6 +22,7 @@ def is_ojm_running(kill=False):
     remote.Connection.verbose = False
     login_nodes = remote.cluster_properties[remote.current_cluster]['login_nodes']
     result = mycollections.OrderedDict()
+    print('is ojm.py running?')
     for login_node in range(1,len(login_nodes)):
         remote.connect_to_login_node(login_node=login_node)
         username = remote.logindetails.me[0]
@@ -46,7 +47,7 @@ def is_ojm_running(kill=False):
                         print('failed:',cmd.str())
         if found:
             if kill:
-                print('ojm.py was running on',login_nodes[login_node],'but has just been killed.\n')
+                print('ojm.py was running on',login_nodes[login_node],'but has just been killed (on your request).\n')
             else:
                 print('ojm.py is running on',login_nodes[login_node],'\n')
     if not result:

@@ -345,7 +345,7 @@ if __name__=='__main__':
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--no-beep',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
-    parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--offline','-o',action='store_true')
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
     print('running_dashboard.py: command line arguments:',args)

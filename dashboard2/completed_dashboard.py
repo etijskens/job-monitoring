@@ -157,8 +157,6 @@ class CompletedDashboard(QtGui.QMainWindow):
         self.ui.qwDetails .setFont(font)
 
         if self.analyze_offline_data:
-            os.makedirs(CompletedDashboard.default_local_folder,exist_ok=True)
-            os.makedirs(self.local_folder            ,exist_ok=True)
             os.makedirs(os.path.join(self.local_folder,'issues'    ),exist_ok=True)
             os.makedirs(os.path.join(self.local_folder,'non_issues'),exist_ok=True)
 
@@ -495,7 +493,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser('finished')
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--test__' ,action='store_true')
-    parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--offline','-o',action='store_true')
     parser.add_argument('--folder','-f',action='store',type=str,default='')
     args = parser.parse_args()
     print('completed_dashboard.py: command line arguments:',args)

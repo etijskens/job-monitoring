@@ -22,42 +22,39 @@ ignore_users = []
 def run_showq():
     """
     1. Run command ``showq -r -p hopper --xml`` on a login node, 
-    2. Parse its xml output, discard everything but the job entries. The result is a 
-       list with an OrderedDict per job entry. 
-    3. Wrap the job entries (=OrderedDicts) in :class:`ShowqJobEntry` objects,
-    4. Convert the list into a  
-    5. remove the job entries whose *mhost* is unknown,
-    6. remove job array entries.
+    2. Parse its xml output into an OrderedDict (xmltodict). 
+    
+    Typical output of ``print(run_showq())`` ::
+     
+        OrderedDict([('Data', OrderedDict(
+            [ ('Object', 'queue')
+            , ('cluster', OrderedDict(
+                            [ ('@LocalActiveNodes', '167')
+                            , ('@LocalAllocProcs', '3305')
+                            , ('@LocalConfigNodes', '168')
+                            , ('@LocalIdleNodes', '1')
+                            , ('@LocalIdleProcs', '54')
+                            , ('@LocalUpNodes', '168')
+                            , ('@LocalUpProcs', '3360')
+                            , ('@RemoteActiveNodes', '0')
+                            , ('@RemoteAllocProcs', '0')
+                            , ('@RemoteConfigNodes', '0')
+                            , ('@RemoteIdleNodes', '0')
+                            , ('@RemoteIdleProcs', '0')
+                            , ('@RemoteUpNodes', '0')
+                            , ('@RemoteUpProcs', '0')
+                            , ('@time', '1487065534')
+                            ]))
+            , ('queue', OrderedDict([ ('@count', '40')
+                                    , ('@option', 'active')
+                                    , ('job', [ <job entry OrderedDict for each job> ])
+                                    ]))
+            ]))
+        ])
+            
     """
     data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
-    try:
-        job_entries = data_showq['Data']['queue']['job']
-    except:
-        remote.err_print('No jobs running.')
-        exit(0)
-    # remove jobs
-    #  . which have no mhost set
-    #  . which have jobid like '390326[1]' (=job array jobs)
-    result = []
-    for job_entry in job_entries:
-        converted = ShowqJobEntry(job_entry)
-        
-        # ignore jobs with unknow mhost
-        try:
-            converted.get_mhost()
-        except KeyError:
-            print('ignoring',converted.get_jobid_long(), '(mhost unknown)')
-            continue
-        
-        # ignore jobs with jobid containing '[n]'
-        jobid = converted.get_jobid()
-        if '[' in jobid:
-            print('ignoring',job_entry.get_jobid_long(), '(worker job)')
-            continue
-        
-        result.append(converted)
-        
-    return result
+    return data_showq 
 
 #===============================================================================    
 class ShowqJobEntry:
@@ -510,7 +507,7 @@ class NeighbouringJobInfo:
         if self.n == 1:
             s += 'None.'
         else:
-            fmt = '\n  **{}**{:3}|{:2} {}% {}GB'
+            fmt = '\n  **{}**{:3}|{:2} {:5.1f}% {:7.3f}GB'
             i = 0 
             s = fmt.format( self.jobid [i]
                           , self.nnodes[i]
@@ -755,8 +752,36 @@ class Sampler:
         """
         Sample the running jobs online (locally). 
         """
-        # get relevan part of showq output
-        job_entries = run_showq()
+        self.data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
+        print(self.get_total_nodes_in_use())
+        # get the job entries
+        try:
+            job_entries = self.data_showq['Data']['queue']['job']
+        except:
+            remote.err_print('No jobs running.')
+            exit(0)
+        # remove jobs
+        #  . which have no mhost set
+        #  . which have jobid like '390326[1]' (=job array jobs)
+        job_entries_filtered = []
+        for job_entry in job_entries:
+            converted = ShowqJobEntry(job_entry)
+            
+            # ignore jobs with unknow mhost
+            try:
+                converted.get_mhost()
+            except KeyError:
+                print('ignoring',converted.get_jobid_long(), '(mhost unknown)')
+                continue
+            
+            # ignore jobs with jobid containing '[n]'
+            jobid = converted.get_jobid()
+            if '[' in jobid:
+                print('ignoring',job_entry.get_jobid_long(), '(worker job)')
+                continue    
+            job_entries_filtered.append(converted)
+        job_entries = job_entries_filtered
+        
         self.n_entries   = len(job_entries)
         
         if self.qMainWindow:
@@ -881,6 +906,14 @@ class Sampler:
         self.timestamps.append(timestamp)
         #    this must be the last statement because the gui otherwise sees a timestamp which is not ready.
         return timestamp
+    #---------------------------------------------------------------------------
+    def get_total_nodes_in_use(self):
+        """
+        :return: a str describing the fraction of nodes in use. 
+        """
+        s = 'nodes in use: {}/{}'.format( self.data_showq['Data']['cluster']['@LocalActiveNodes']
+                                        , self.data_showq['Data']['cluster']['@LocalConfigNodes'] )
+        return s
     #---------------------------------------------------------------------------
     def get_remote_timestamp(self):
         """
