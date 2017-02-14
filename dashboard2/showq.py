@@ -10,6 +10,7 @@ from sar        import Data_sar
 from titleline  import title_line
 import          rules
 from mycollections import OrderedDict,od_add_list_item,od_last
+from cluster    import current_cluster,cluster_properties
 
 import pickle,os,shutil
 from time       import sleep
@@ -300,8 +301,11 @@ class JobSample:
         self.details += '\nwalltime used/remaining: {} / {}'.format( self.data_qstat.get_walltime_used()
                                                                    , self.data_qstat.get_walltime_remaining()
                                                                    )
-        self.details += '\nmem [GB] used/requested: {} / {}'.format( round(self.data_qstat.get_mem_used()     ,3)
-                                                                   , round(self.data_qstat.get_mem_requested(),3) )
+        mem_available = cluster_properties[current_cluster]['mem_avail_gb'](self.get_nodes())
+        self.details += '\nmem [GB] used/requested/available: {} / {} / {}'.format( round(self.data_qstat.get_mem_used()     ,3)
+                                                                             , round(self.data_qstat.get_mem_requested(),3) 
+                                                                             , mem_available 
+                                                                             )
         hdr = 'nodes and cores used: '
         nohdr = len(hdr)*' '
         nodes = self.data_qstat.get_exec_host().split('+')
@@ -509,7 +513,8 @@ class NeighbouringJobInfo:
         else:
             fmt = '\n  **{}**{:3}|{:2} {:5.1f}% {:7.3f}GB'
             i = 0 
-            s = fmt.format( self.jobid [i]
+            s+= '{} (total={}).'.format(self.n-1,self.n) 
+            s+= fmt.format( self.jobid [i]
                           , self.nnodes[i]
                           , self.ncores[i]
                           , self.effic [i]
