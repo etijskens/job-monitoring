@@ -4,7 +4,7 @@ jobs in the showq output.
 """
 from cluster import cluster_properties, current_cluster
 from cfg import Cfg
-
+import cpus
 #===============================================================================    
 class Rule:
     """
@@ -112,6 +112,43 @@ class ResourcesWellUsedRule (Rule):
         return self.warning
     #---------------------------------------------------------------------------
 
+
+#===============================================================================    
+class UsingSwapSpaceRule(Rule):
+    """
+    Warn iff:
+    
+    * efficiency is below threshold
+    * memory is nearly exhousted
+    * more than 10% of the swap space is used.
+    """
+    maximum_fraction_swap = .10
+    
+    #---------------------------------------------------------------------------
+    def __init__(self):
+        Rule.__init__(self,warning='!! swap space used: {}/{} = {}%')
+    #---------------------------------------------------------------------------
+    def check(self,job_sample):
+        """ Reimplementation of :func:`Rule.check`. """
+        
+        if job_sample.get_effic() >= EfficiencyThresholdRule.effic_threshold:
+            return ''
+        mem_available = cluster_properties[current_cluster]['mem_avail_gb'](job_sample.get_nodes())
+        if job_sample.data_qstat.get_mem_used() < .90*mem_available:
+            return ''
+        s = 'Swap space used:'
+        warn = False
+        for node in job_sample.get_nodes():
+            result = cpus.run_free(node)
+            if result[2] >= UsingSwapSpaceRule.maximum_fraction_swap:
+                warn = True
+            s += '\n    {}: swap used:{:6.2f} available {:6.2f} = {:6.2f}%'.format(node,*result)
+        if warn:
+            return s
+        else:
+            return ''
+    #---------------------------------------------------------------------------
+    
 #===============================================================================    
 class TooManyWarningsRule(Rule):
     """
@@ -161,6 +198,7 @@ class NoModulesRule(Rule):
 #===============================================================================    
 the_rules = [ EfficiencyThresholdRule()
             , ResourcesWellUsedRule()
+            , UsingSwapSpaceRule()
             , TooManyWarningsRule()
             , NoModulesRule()
             ]

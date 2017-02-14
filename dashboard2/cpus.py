@@ -176,12 +176,28 @@ def run_sar_P(compute_node,cores=None):
             lines_filtered.append(lines[1+cpu]) 
         return lines_filtered
     #---------------------------------------------------------------------------    
+
+#===============================================================================
+def run_free(cnode):
+    command = 'ssh {} free -m'.format(cnode)
+    try:
+        lines = remote.run(command, attempts=1, post_processor=remote.list_of_lines, raise_exception=True)
+    except:
+        return None
+    for line in lines:
+        if line.startswith('Swap:'):
+            words = line.split()
+            swap_used  = int(words[2])/1024 # GB
+            swap_avail = int(words[1])/1024 # GB
+            return [swap_used,swap_avail,swap_used/swap_avail] 
+    #---------------------------------------------------------------------------    
             
 #===============================================================================
 #== test code below ============================================================
 #===============================================================================
 if __name__=="__main__":
-
+    remote.connect_to_login_node()
+    print(run_free('r4c6cn03'))
     assert str2gb('1gb')==1
     assert str2gb('1GB')==1
     assert str2gb('10GB')==10

@@ -303,9 +303,9 @@ class JobSample:
                                                                    )
         mem_available = cluster_properties[current_cluster]['mem_avail_gb'](self.get_nodes())
         self.details += '\nmem [GB] used/requested/available: {} / {} / {}'.format( round(self.data_qstat.get_mem_used()     ,3)
-                                                                             , round(self.data_qstat.get_mem_requested(),3) 
-                                                                             , mem_available 
-                                                                             )
+                                                                                  , round(self.data_qstat.get_mem_requested(),3) 
+                                                                                  , mem_available 
+                                                                                  )
         hdr = 'nodes and cores used: '
         nohdr = len(hdr)*' '
         nodes = self.data_qstat.get_exec_host().split('+')
