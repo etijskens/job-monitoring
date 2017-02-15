@@ -16,7 +16,7 @@ from cfg import Cfg
 from cluster import current_cluster,cluster_properties
 
 #===============================================================================
-def err_print(*args):
+def err_print(*args,to_stderr=True):
     """
     Utility for printing to stderr, behaves more or less as built-in print().
     """
@@ -25,7 +25,8 @@ def err_print(*args):
         s+=' '
         s+=str(arg)
     s+='\n'
-    sys.stderr.write(s)
+    if to_stderr:
+        sys.stderr.write(s)
     return s
 #===============================================================================    
 class Connection:
@@ -159,13 +160,14 @@ class CommandBase:
         """
         return ( 2**(attempts-1) -1 )*wait
     #---------------------------------------------------------------------------
-    def execute_repeat(self,attempts=6,wait=60,post_processor=None):
+    def execute_repeat(self,attempts=6,wait=60,post_processor=None,verbose=True):
         """
         Repeated execution after failure.
         
         :param int attempts: number of times the command is retried on failure, before it gives up. 
         :param int wait: seconds of wait time after the first failure, doubled on every failure.
         :param post_processor: a function the transforms the output (on stdout) of the command.
+        :param bool verbose: print error message to stderr if the command fails.
         
         :return: on success the output (on stdout) of the command as processed by *post_processor*, otherwise *None*
           
@@ -202,12 +204,15 @@ class CommandBase:
                 return result
             except Exception as e:
                 attempts_left -= 1
-                CommandBase.last_error_messages += err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts))
-                CommandBase.last_error_messages += err_print(type(e),e)
-                CommandBase.last_error_messages += err_print('Retrying after',sleep_time,'seconds.')
-                sleep(wait)
-                slept_time += sleep_time 
-                sleep_time *=2
+                CommandBase.last_error_messages += err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts),to_stderr=verbose)
+                CommandBase.last_error_messages += err_print(type(e),e,to_stderr=verbose)
+                CommandBase.last_error_messages += err_print('Retrying after',sleep_time,'seconds.',to_stderr=verbose)
+                if attempts_left:
+                    sleep(wait)
+                    slept_time += sleep_time 
+                    sleep_time *=2
+                else:
+                    return
         else:
             assert attempts_left==0
             CommandBase.last_error_messages += err_print('Exhausted after {} attempts.'.format(attempts))
@@ -321,7 +326,7 @@ class RemoteCommand(CommandBase):
     #---------------------------------------------------------------------------
     
 #===============================================================================    
-def run(command,attempts=6,wait=60,post_processor=None,raise_exception=False):
+def run(command,attempts=6,wait=60,post_processor=None,raise_exception=False,verbose=True):
     """
     Wrapper function around Command and RemoteCommand. If Cfg.offline is True, we
     are running on a login node, and the *commmand* string is executed in a :class:`Command`
@@ -350,7 +355,7 @@ def run(command,attempts=6,wait=60,post_processor=None,raise_exception=False):
         if attempts==1 and raise_exception:
             return cmd.execute(post_processor=post_processor) #may raise an exception
         else:
-            return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor)
+            return cmd.execute_repeat(attempts=attempts,wait=wait,post_processor=post_processor,verbose=verbose)
     except Exception as e:
         err_print(type(e),e)
         return None

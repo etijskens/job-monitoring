@@ -10,6 +10,7 @@ import remote
 import argparse
 import mycollections
 from cluster import current_cluster
+from titleline import title_line
 
 #===============================================================================    
 def is_ojm_running(kill=False):
@@ -22,7 +23,7 @@ def is_ojm_running(kill=False):
     remote.Connection.verbose = False
     login_nodes = remote.cluster_properties[remote.current_cluster]['login_nodes']
     result = mycollections.OrderedDict()
-    print('is ojm.py running?')
+    print(title_line('Is ojm.py running?', width=100, char='-', above=True))
     for login_node in range(1,len(login_nodes)):
         remote.connect_to_login_node(login_node=login_node)
         username = remote.logindetails.me[0]
@@ -52,6 +53,7 @@ def is_ojm_running(kill=False):
                 print('ojm.py is running on',login_nodes[login_node],'\n')
     if not result:
         remote.err_print('ojm.py is not running on',current_cluster,'\n')
+    print(title_line(width=100, char='-'))
     return result 
     #---------------------------------------------------------------------------
 
