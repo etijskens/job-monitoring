@@ -753,12 +753,11 @@ class Sampler:
         self.timestamp_jobs = OrderedDict() # {timestamp:[jobids]}
         self.jobids_running_previous = []
     #---------------------------------------------------------------------------    
-    def sample(self,verbose=False,test__=False):
+    def sample(self,verbose=False):
         """
         Sample the running jobs online (locally). 
         """
         self.data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
-        print(self.get_total_nodes_in_use())
         # get the job entries
         try:
             job_entries = self.data_showq['Data']['queue']['job']
@@ -792,6 +791,7 @@ class Sampler:
         if self.qMainWindow:
             from PyQt4.QtGui import QProgressDialog,QApplication
             dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
+            hdr = 'Sampling #{} : {} {}/{}'
         else:
             from progress import printProgress
             hdr = 'sampling #{}'.format(len(self.timestamp_jobs)+1)
@@ -835,14 +835,6 @@ class Sampler:
             print(title_line(timestamp, char='=', width=100, above=True, below=True),end='')
             
         # loop over the running jobs (job_entries) 
-        overview = [] # one warning per job with issues, jobs without issues are skipped
-        if test__:
-            n_ok = 0
-            n_ok_stop = 1
-            n_notok = 0 
-            n_notok_stop = 2
-            print('testing: n_ok_stop={}, n_notok_stop={}'.format(n_ok_stop,n_notok_stop)) 
-            
         #pass 1 create jobs and job samples
         for i_entry,job_entry in enumerate(job_entries):
             if job_entry.get_state() != 'Running':
@@ -851,13 +843,13 @@ class Sampler:
             username = job_entry.get_username()
             od_add_list_item(self.timestamp_jobs,timestamp,jobid)
                         
-            if self.qMainWindow is None:
-                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
-            else:
-                progress_message = 'Sampling #{} : {} {}/{}'.format(len(self.timestamp_jobs),jobid,i_entry,self.n_entries)
+            if self.qMainWindow:
+                progress_message = hdr.format(len(self.timestamp_jobs),jobid,i_entry,self.n_entries)
                 dlg.setLabelText(progress_message)
                 dlg.setValue(i_entry)
                 QApplication.processEvents()
+            else:
+                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
                 
             if not jobid in self.jobs:
                 # this job is encountered for the first time
@@ -873,8 +865,33 @@ class Sampler:
                 job = self.jobs[jobid]
                 job.add_sample(job_entry,timestamp)
         
+        if self.qMainWindow:
+            # terminate QProgressDialog
+            dlg.setValue(self.n_entries)
+            QApplication.processEvents()
+            # start new QProgressDialog
+            dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
+            hdr = 'Checking rules #{} : {} {}/{}'
+        else:
+            # terminate printProgress            
+            printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
+            # start new printProgress            
+            hdr = 'Checking rules #{}'.format(len(self.timestamp_jobs)+1)
+                
         #pass 2 add NeighbouringJobInfo and check the rules
+        overview = [] # one warning per job with issues, jobs without issues are skipped
+        i_entry = 0
         for jobid,job in self.jobs.items():
+            #progress
+            if self.qMainWindow:
+                progress_message = hdr.format(len(self.timestamp_jobs),jobid,i_entry,self.n_entries)
+                dlg.setLabelText(progress_message)
+                dlg.setValue(i_entry)
+                QApplication.processEvents()
+            else:
+                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
+            i_entry += 1
+            #the real work
             overview_line = job.check_for_issues(timestamp)
             if overview_line:
                 overview.append(overview_line)
@@ -883,29 +900,24 @@ class Sampler:
                     print(job.get_details(timestamp))
                 if Cfg.offline:
                     job.pickle('running', verbose=verbose)
-            
-            if test__:
-                if overview_line:
-                    n_notok += 1
-                else:
-                    n_ok += 1
-                if n_ok >= n_ok_stop and n_notok >= n_notok_stop:
-                    break
-        
-        if Cfg.offline:
-            # notify that sampling has finished.. 
-            with open('running/timestamp','w') as f:
-                f.write(timestamp)
-
+                    
         if self.qMainWindow is None:
+            # terminate printProgress
             printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
             for line in overview:
                 print(line,end='')
             print('\nWell performing jobs: {}/{}'.format(self.n_entries-len(overview),self.n_entries))
         else:
+            # terminate QProgressDialog
             dlg.setValue(self.n_entries)
             QApplication.processEvents()
-        
+        print(self.get_total_nodes_in_use())
+
+        if Cfg.offline:
+            # notify that sampling has finished.. 
+            with open('running/timestamp','w') as f:
+                f.write(timestamp)
+
         self.overviews[timestamp] = self.overview_list2str(overview)
         
         self.timestamps.append(timestamp)
@@ -975,7 +987,8 @@ class Sampler:
         overview_list.sort(key=key,reverse=reverse)
         n_jobs = self.n_entries
         n_warn = len(overview_list)
-        text = 'Jobs running well: {}/{}, efficiency threshold = {}%'.format(n_jobs-n_warn,n_jobs,Cfg.effic_threshold) 
+        text = 'Jobs running well: {}/{}, efficiency threshold = {}%, '.format(n_jobs-n_warn,n_jobs,Cfg.effic_threshold)
+        text+= self.get_total_nodes_in_use()
         text+= ''.join(overview_list) 
         return text
     #---------------------------------------------------------------------------
@@ -1022,10 +1035,8 @@ class Sampler:
 if __name__=="__main__":
     remote.connect_to_login_node()
 
-    test__ = True
-    test__ = False
     sampler = Sampler()
-    timestamp = sampler.sample(test__=test__)
+    timestamp = sampler.sample()
     
     current_jobids = sampler.timestamp_jobs[timestamp]
     for jobid in current_jobids:

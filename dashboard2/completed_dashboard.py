@@ -125,19 +125,15 @@ class CompletedDashboard(QtGui.QMainWindow):
     Less useful arguments:
      
     :param bool verbose: more or less printing.
-    :param bool test__: for testing the gui
     """
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,offline=False,local_folder='',verbose=False
-                     ,test__ =False
-                     ):
+    def __init__(self,offline=False,local_folder='',verbose=False):
         super(CompletedDashboard, self).__init__()
         # file 'completed_dashboard.ui' cam be modifed using qt creator
         self.ui = uic.loadUi('completed_dashboard.ui',self)
         self.ui.qwSplitter.setSizes([100,300])
         self.setWindowTitle('Job monitor - Completed jobs dashboard')
         self.verbose = verbose
-        self.test__  = test__
         self.analyze_offline_data = offline
         if not local_folder:
             self.local_folder = default_local_folder(self.analyze_offline_data)
@@ -492,7 +488,6 @@ if __name__=='__main__':
     
     parser = argparse.ArgumentParser('finished')
     parser.add_argument('--verbose',action='store_true')
-    parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline','-o',action='store_true')
     parser.add_argument('--folder','-f',action='store',type=str,default='')
     args = parser.parse_args()
@@ -503,7 +498,6 @@ if __name__=='__main__':
     finished = CompletedDashboard(offline = args.offline
                                  ,local_folder = args.folder
                                  ,verbose = args.verbose
-                                 ,test__  = args.test__
                                  )
     finished.show()
     sys.exit(app.exec_())

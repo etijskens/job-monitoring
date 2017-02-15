@@ -44,10 +44,9 @@ class RunningDashboard(QtGui.QMainWindow):
     
     :param bool verbose: if *True* produces slightly more output in the terminal.
     :param bool beep: if  *True* produces a beep when sampling is finished (only for local sampling).
-    :param bool test__: if *True* local sampling does not examine the entire showq output, but returns as soon as a few good and bad jobs have been found.
     """
     #---------------------------------------------------------------------------------------------------------         
-    def __init__(self,offline=False,verbose=False,beep=True,test__=False):
+    def __init__(self,offline=False,verbose=False,beep=True):
         """"""
         super(RunningDashboard, self).__init__()
         # file 'running_dashboard.ui' cam be modifed using qt creator
@@ -55,7 +54,6 @@ class RunningDashboard(QtGui.QMainWindow):
         self.setWindowTitle('Job monitor - Running jobs dashboard')
         self.verbose = verbose
         self.beep    = beep
-        self.test__  = test__
         self.analyze_offline_data = offline
         self.username= ''
         self.ignore_signals = False
@@ -84,7 +82,7 @@ class RunningDashboard(QtGui.QMainWindow):
         if self.analyze_offline_data:
             self.sampler.sample_offline()
         else:
-            self.sampler.sample(test__=self.test__)
+            self.sampler.sample()
         timestamp = self.sampler.timestamps[-1] 
         if self.beep:
             print(ES.bell)
@@ -344,7 +342,6 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser('job-monitor')
     parser.add_argument('--verbose',action='store_true')
     parser.add_argument('--no-beep',action='store_true')
-    parser.add_argument('--test__' ,action='store_true')
     parser.add_argument('--offline','-o',action='store_true')
     parser.add_argument('--interval',action='store',default=Cfg.sampling_interval, type=type(Cfg.sampling_interval))
     args = parser.parse_args()
@@ -357,7 +354,6 @@ if __name__=='__main__':
     dashboard = RunningDashboard( offline =     args.offline
                                 , beep    = not args.no_beep
                                 , verbose =     args.verbose
-                                , test__  =     args.test__
                                 )
     dashboard.show()
     
