@@ -872,11 +872,18 @@ class Sampler:
                 # this job is encountered for the first time
                 # or this is a restart and the job was pickled 
                 job =  unpickle('running', username, jobid, verbose=verbose)
-                if job is None:
+                if job:
+                    # correct the "upward" object references in the data tree
+                    # otherwise they refer to their version at the moment of pickling
+                    # job.sampler
+                    job.sampler = self
+                    # job_sample.parent_job
+                    for job_sample in job.samples.values():
+                        job_sample.parent_job = job
+                    job.add_sample(job_entry,timestamp)
+                else:
                     # this job is really encountered for the first time
                     job = Job(timestamp,job_entry,self)
-                else:
-                    job.add_sample(job_entry,timestamp)
                 self.jobs[jobid] = job 
             else:
                 job = self.jobs[jobid]
