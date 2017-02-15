@@ -53,7 +53,7 @@ def load_mail_addresses():
     """
     try:
         mail_addresses = pickle.load( open('config/mail_addresses.pickled','rb') )
-        print('Loaded config/mail_addresses.pickled')
+#         print('Loaded config/mail_addresses.pickled')
         return mail_addresses
     except :
         return None
@@ -82,7 +82,7 @@ def refresh_mail_addresses():
         if words:
             mail_addresses[words[0]] = words[1]
     pickle.dump(mail_addresses, open('config/mail_addresses.pickled','wb') )
-    print('Refreshed config/mail_addresses.pickled')
+#     print('Refreshed config/mail_addresses.pickled')
     return mail_addresses
     #-----------------------------------------------------------------------------------------------
     
