@@ -775,6 +775,7 @@ class Sampler:
         Sample the running jobs online (locally). 
         """
         self.data_showq = remote.run("showq -r -p hopper --xml",post_processor=remote.xml_to_odict)
+        self.total_nodes_in_use = self.get_total_nodes_in_use()
         # get the job entries
         try:
             job_entries = self.data_showq['Data']['queue']['job']
@@ -935,7 +936,7 @@ class Sampler:
             # terminate QProgressDialog
             dlg.setValue(self.n_entries)
             QApplication.processEvents()
-        print(self.get_total_nodes_in_use())
+        print(self.total_nodes_in_use)
 
         if Cfg.offline:
             # notify that sampling has finished.. 
@@ -952,9 +953,16 @@ class Sampler:
         """
         :return: a str describing the fraction of nodes in use. 
         """
-        s = 'nodes in use: {}/{}'.format( self.data_showq['Data']['cluster']['@LocalActiveNodes']
-                                        , self.data_showq['Data']['cluster']['@LocalConfigNodes'] )
-        return s
+        if hasattr(self,'data_showq'):
+            s = 'nodes in use: {}/{}'.format( self.data_showq['Data']['cluster']['@LocalActiveNodes']
+                                            , self.data_showq['Data']['cluster']['@LocalConfigNodes'] )
+            self.total_nodes_in_use = s
+            return s
+        else:
+            if hasattr(self,'total_nodes_in_use'):
+                return self.total_nodes_in_use
+            else:
+                return ''
     #---------------------------------------------------------------------------
     def get_remote_timestamp(self):
         """
@@ -1011,8 +1019,10 @@ class Sampler:
         overview_list.sort(key=key,reverse=reverse)
         n_jobs = self.n_entries
         n_warn = len(overview_list)
-        text = 'Jobs running well: {}/{}, efficiency threshold = {}%, '.format(n_jobs-n_warn,n_jobs,Cfg.effic_threshold)
-        text+= self.get_total_nodes_in_use()
+        text = 'Jobs running well: {}/{}, efficiency threshold = {}%'.format(n_jobs-n_warn,n_jobs,Cfg.effic_threshold)
+        s = self.get_total_nodes_in_use()
+        if s:
+            text+= ', '+s
         text+= ''.join(overview_list) 
         return text
     #---------------------------------------------------------------------------
@@ -1042,7 +1052,8 @@ class Sampler:
                         if not line.endswith('\n'):
                             line += '\n'
                         overview.append(line)
-                overview.append(overview_line)                
+                overview.append(overview_line)   
+        self.total_nodes_in_use = job.sampler.total_nodes_in_use             
     #---------------------------------------------------------------------------
     def when_done_adding_offline_jobs(self):
         """
