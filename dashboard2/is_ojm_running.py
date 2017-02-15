@@ -41,10 +41,10 @@ def is_ojm_running(kill=False):
                     cmd = remote.RemoteCommand('kill '+psid)
                     try:
                         cmd.execute()
-                        print(cmd.str())
+                        print(cmd.to_str())
                     except Exception as e:
                         print(type(e),e)
-                        print('failed:',cmd.str())
+                        print('failed:',cmd.to_str())
         if found:
             if kill:
                 print('ojm.py was running on',login_nodes[login_node],'but has just been killed (on your request).\n')
