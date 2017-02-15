@@ -1,6 +1,7 @@
 """
 Script that provides an overview of the offline job monitor.
 """
+import argparse
 import remote
 from titleline import title_line
 from is_ojm_running import is_ojm_running
@@ -29,9 +30,9 @@ def offline_overview(only_new_completed_jobs=True):
         
     print(title_line('Completed jobs', width=100, char='-', above=True, below=True))
     if only_new_completed_jobs:
-        command = 'ls ~/data/jobmonitor/completed/*.pickled'
+        command = 'cd data/jobmonitor/completed/ ; ls *.pickled'
     else:
-        command = 'ls ~/data/jobmonitor/completed/*.pickle*'
+        command = 'cd data/jobmonitor/completed/ ; ls *.pickle*'
     lines = remote.run(command,post_processor=remote.list_of_non_empty_lines,attempts=1,verbose=False)
     n = 0
     if lines:
@@ -55,4 +56,9 @@ def offline_overview(only_new_completed_jobs=True):
 #===============================================================================    
 if __name__=='__main__':
     remote.connect_to_login_node()
-    offline_overview()
+
+    parser = argparse.ArgumentParser('offline_overview')
+    parser.add_argument('--old','-o',action='store_true')
+    args = parser.parse_args()
+    print('offline_overview.py: command line arguments:',args)
+    offline_overview(not args.old)

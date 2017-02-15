@@ -152,7 +152,6 @@ class RunningDashboard(QtGui.QMainWindow):
 
         cursor = self.ui.qwOverview.textCursor()
         if self.previous_jobid:
-            print('a')
             previous_block = cursor.blockNumber()
             cursor.select(QtGui.QTextCursor.LineUnderCursor)
             selection = cursor.selectedText()
@@ -170,7 +169,6 @@ class RunningDashboard(QtGui.QMainWindow):
             self.previous_block = current_block
             self.previous_jobid = ''
         else:    
-            print('b')
             current_block = cursor.blockNumber()
             if self.previous_block < current_block: 
                 move_op = QtGui.QTextCursor.Down
