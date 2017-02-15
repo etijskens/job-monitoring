@@ -486,12 +486,20 @@ class NeighbouringJobInfo:
         for jobid2 in neighbouring_jobs:
             if jobid2 != jobid1:
                 job2 = job_sample.parent_job.sampler.jobs[jobid2]
-                job2sample = job2.get_sample(timestamp)
+                try:
+                    job2sample = job2.get_sample(timestamp)
+                except KeyError as e:
+                    print(type(e),e,job2)
+                    self.nnodes.append(0)
+                    self.ncores.append(0)
+                    self.effic .append(0)
+                    self.memory.append(0)
+                else:
+                    self.nnodes.append(job2sample.get_nnodes())
+                    self.ncores.append(job2sample.get_ncores())
+                    self.effic .append(job2sample.get_effic ())
+                    self.memory.append(job2sample.get_mem   ())
                 self.jobid .append(jobid2)
-                self.nnodes.append(job2sample.get_nnodes())
-                self.ncores.append(job2sample.get_ncores())
-                self.effic .append(job2sample.get_effic ())
-                self.memory.append(job2sample.get_mem   ())
         self.n = len(neighbouring_jobs)
         if self.n>1:
             self.jobid .append('total:')
@@ -522,12 +530,15 @@ class NeighbouringJobInfo:
                           )
             fmt = fmt.replace('*',' ')
             for i in range(1,self.n):
-                s += fmt.format( self.jobid [i]
-                               , self.nnodes[i]
-                               , self.ncores[i]
-                               , self.effic [i]
-                               , self.memory[i]
-                               )
+                if self.nnodes[i]!=0:
+                    s += fmt.format( self.jobid [i]
+                                   , self.nnodes[i]
+                                   , self.ncores[i]
+                                   , self.effic [i]
+                                   , self.memory[i]
+                                   )
+                else:
+                    s+= '\n    {} (no info)'.format(self.jobid[i])
         s+='\n'
         return s
     #---------------------------------------------------------------------------        
@@ -579,7 +590,13 @@ class Job:
         self.jobscript       = None
         
         self.add_sample(job_entry,timestamp)
-        
+    #---------------------------------------------------------------------------
+    def __str__(self):
+        s = self.jobid    + '\n'
+        s+= self.username + '\n'
+        s+= self.mhost    + '\n'
+        s+= str(self.samples)
+        return s
     #---------------------------------------------------------------------------    
     def add_sample(self,job_entry,timestamp):
         """
@@ -794,7 +811,7 @@ class Sampler:
             hdr = 'Sampling #{} : {} {}/{}'
         else:
             from progress import printProgress
-            hdr = 'sampling #{}'.format(len(self.timestamp_jobs)+1)
+            hdr = 'sampling showq #{}'.format(len(self.timestamp_jobs)+1)
             
         # create 
         #   . a dict { mhost : [jobid] } with all the jobs running on node mhost 
