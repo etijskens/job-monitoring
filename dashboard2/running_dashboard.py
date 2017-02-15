@@ -152,6 +152,7 @@ class RunningDashboard(QtGui.QMainWindow):
 
         cursor = self.ui.qwOverview.textCursor()
         if self.previous_jobid:
+            print('a')
             previous_block = cursor.blockNumber()
             cursor.select(QtGui.QTextCursor.LineUnderCursor)
             selection = cursor.selectedText()
@@ -169,6 +170,7 @@ class RunningDashboard(QtGui.QMainWindow):
             self.previous_block = current_block
             self.previous_jobid = ''
         else:    
+            print('b')
             current_block = cursor.blockNumber()
             if self.previous_block < current_block: 
                 move_op = QtGui.QTextCursor.Down
@@ -180,7 +182,10 @@ class RunningDashboard(QtGui.QMainWindow):
                 cursor.movePosition(move_op)
                 current_block = cursor.blockNumber()
                 cursor.select(QtGui.QTextCursor.LineUnderCursor)
-                selection = cursor.selectedText()    
+                s = cursor.selectedText()
+                if s==selection: # break out of endless loop when moving the cursor downwards on the last line 
+                    break; 
+                selection = s
             with IgnoreSignals(self):
                 self.ui.qwOverview.setTextCursor(cursor)
             self.previous_block = current_block
