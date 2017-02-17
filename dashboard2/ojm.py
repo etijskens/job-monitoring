@@ -19,14 +19,17 @@ from cfg import Cfg
 from progress import printProgress
 Cfg.offline = True
 
-import os,time
+import os,time,argparse
 
 from showq      import Sampler
 from titleline  import title_line
 
 #===============================================================================
 if __name__=="__main__":
-    verbose = False
+    parser = argparse.ArgumentParser('ojm')
+    parser.add_argument('--show_progress','-s',action='store_true')
+    args = parser.parse_args()
+    print('ojm.py: command line arguments:',args)
     
     sampler = Sampler()
     
@@ -39,12 +42,13 @@ if __name__=="__main__":
     print(     title_line('off-line job monitor started',char='=',width=100))
     stopped = False
     while not stopped: 
-        timestamp = sampler.sample(verbose=verbose)
+        timestamp = sampler.sample(verbose=False,show_progress=args.show_progress)
         stopped = not os.path.exists('ojm.running')
         minutes_to_sleep = int(Cfg.sampling_interval/60)
         print()
         for m in range(minutes_to_sleep+1):
-            printProgress( m, minutes_to_sleep, prefix = 'Sleeping: ', suffix='minutes', decimals=-1)
+            if args.show_progress:
+                printProgress( m, minutes_to_sleep, prefix = 'Sleeping: ', suffix='minutes', decimals=-1)
             time.sleep(60)
         print('\n')
 

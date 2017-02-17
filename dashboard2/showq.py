@@ -275,7 +275,8 @@ class JobSample:
             self.overview = '\n'+( desc.ljust(32)+self.warnings[0] ).ljust(68)+str(self.parent_job.jobscript.loaded_modules(short=True))
             spaces = '\n'+(32*' ')
             for w in self.warnings[1:]:
-                self.overview += spaces+w             
+                w0 = w.split('\n',1)[0]
+                self.overview += spaces+w0
         else:
             self.overview = ''
         return self.overview
@@ -770,7 +771,7 @@ class Sampler:
         self.timestamp_jobs = OrderedDict() # {timestamp:[jobids]}
         self.jobids_running_previous = []
     #---------------------------------------------------------------------------    
-    def sample(self,verbose=False):
+    def sample(self,verbose=False,show_progress=False):
         """
         Sample the running jobs online (locally). 
         """
@@ -811,8 +812,9 @@ class Sampler:
             dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
             hdr = 'Sampling #{} : {} {}/{}'
         else:
-            from progress import printProgress
-            hdr = 'sampling showq #{}'.format(len(self.timestamp_jobs)+1)
+            if show_progress:
+                from progress import printProgress
+                hdr = 'sampling showq #{}'.format(len(self.timestamp_jobs)+1)
             
         # create 
         #   . a dict { mhost : [jobid] } with all the jobs running on node mhost 
@@ -867,7 +869,8 @@ class Sampler:
                 dlg.setValue(i_entry)
                 QApplication.processEvents()
             else:
-                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
+                if show_progress:                
+                    printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
                 
             if not jobid in self.jobs:
                 # this job is encountered for the first time
@@ -898,10 +901,11 @@ class Sampler:
             dlg = QProgressDialog('','',0, self.n_entries,self.qMainWindow)
             hdr = 'Checking rules #{} : {} {}/{}'
         else:
-            # terminate printProgress            
-            printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
-            # start new printProgress            
-            hdr = 'Checking rules #{}'.format(len(self.timestamp_jobs)+1)
+            if show_progress:                
+                # terminate printProgress            
+                printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
+                # start new printProgress            
+                hdr = 'Checking rules #{}'.format(len(self.timestamp_jobs)+1)
                 
         #pass 2 add NeighbouringJobInfo and check the rules
         overview = [] # one warning per job with issues, jobs without issues are skipped
@@ -914,7 +918,8 @@ class Sampler:
                 dlg.setValue(i_entry)
                 QApplication.processEvents()
             else:
-                printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
+                if show_progress:                
+                    printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
             i_entry += 1
             #the real work
             overview_line = job.check_for_issues(timestamp)
@@ -926,16 +931,17 @@ class Sampler:
                 if Cfg.offline:
                     job.pickle('running', verbose=verbose)
                     
-        if self.qMainWindow is None:
-            # terminate printProgress
-            printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
-            for line in overview:
-                print(line,end='')
-            print('\nWell performing jobs: {}/{}'.format(self.n_entries-len(overview),self.n_entries))
-        else:
+        if self.qMainWindow:
             # terminate QProgressDialog
             dlg.setValue(self.n_entries)
             QApplication.processEvents()
+        else:
+            if show_progress:                
+                # terminate printProgress
+                printProgress(self.n_entries, self.n_entries, prefix=hdr, suffix='', decimals=-1)
+            for line in overview:
+                print(line,end='')
+            print('\nWell performing jobs: {}/{}'.format(self.n_entries-len(overview),self.n_entries))
         print(self.total_nodes_in_use)
 
         if Cfg.offline:

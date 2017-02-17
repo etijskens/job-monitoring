@@ -126,7 +126,7 @@ class UsingSwapSpaceRule(Rule):
     
     #---------------------------------------------------------------------------
     def __init__(self):
-        Rule.__init__(self,warning='!! swap space used: {}/{} = {}%')
+        Rule.__init__(self,warning='!! swap space used: {}/{} GB = {}%')
     #---------------------------------------------------------------------------
     def check(self,job_sample):
         """ Reimplementation of :func:`Rule.check`. """
@@ -136,14 +136,19 @@ class UsingSwapSpaceRule(Rule):
         mem_available = cluster_properties[current_cluster]['mem_avail_gb'](job_sample.get_nodes())
         if job_sample.data_qstat.get_mem_used() < .90*mem_available:
             return ''
-        s = 'Swap space used:'
+        s = ''
         warn = False
+        swap_used  = 0
+        swap_avail = 0
         for node in job_sample.get_nodes():
             result = cpus.run_free(node)
+            swap_used += result[0]
+            swap_avail+= result[1]
             if result[2] >= UsingSwapSpaceRule.maximum_fraction_swap:
                 warn = True
-            s += '\n    {}: swap used:{:6.2f} available {:6.2f} = {:6.2f}%'.format(node,*result)
+            s += '\n    {}: swap used: {}/{} GB = {}%'.format(node,round(result[0],2),round(result[1],2),round(result[2],2))
         if warn:
+            s = self.warning.format(round(swap_used,2),round(swap_avail,2),round(100*swap_used/swap_avail),2) + s
             return s
         else:
             return ''
