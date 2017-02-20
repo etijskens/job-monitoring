@@ -21,8 +21,10 @@ def err_print(*args,to_stderr=True,print_time=True):
     Utility for printing to stderr, behaves more or less as built-in print().
     """
     if print_time:
-        err_print(datetime.datetime.now(),to_stderr=to_stderr,print_time=False)
-    s = '!!!'
+        s = err_print('\n',datetime.datetime.now(),to_stderr=False,print_time=False)
+    else:
+        s = ''
+    s += '!!!'
     for arg in args:
         s+=' '
         s+=str(arg)
@@ -69,7 +71,7 @@ class Connection:
             if Connection.verbose:
                 print('Successfully connected {} to {}.'.format(username,host))
         except:
-            err_print('Failed to connect {} to {}.'.format(username,host))            
+            err_print('Failed to connect {} to {}.'.format(username,host),print_time=False)            
             self.paramiko_client = None
     #---------------------------------------------------------------------------    
     def is_connected(self):
@@ -202,11 +204,16 @@ class CommandBase:
                 result = self.execute(post_processor)
                 if slept_time:
                     CommandBase.last_error_messages \
-                        += err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left+1,attempts,slept_time))
+                        += err_print('Attempt {}/{} succeeded after {} seconds.'.format(attempts-attempts_left+1,attempts,slept_time)
+                                    , print_time=(not CommandBase.last_error_messages)
+                                    )
                 return result
             except Exception as e:
                 attempts_left -= 1
-                CommandBase.last_error_messages += err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts),to_stderr=verbose)
+                CommandBase.last_error_messages += err_print('Attempt {}/{} failed.'.format(attempts-attempts_left,attempts)
+                                                            , to_stderr=verbose
+                                                            , print_time=(not CommandBase.last_error_messages)
+                                                            )
                 CommandBase.last_error_messages += err_print(type(e),e,to_stderr=verbose)
                 CommandBase.last_error_messages += err_print('Retrying after',sleep_time,'seconds.',to_stderr=verbose)
                 if attempts_left:
@@ -217,7 +224,9 @@ class CommandBase:
                     return
         else:
             assert attempts_left==0
-            CommandBase.last_error_messages += err_print('Exhausted after {} attempts.'.format(attempts))
+            CommandBase.last_error_messages += err_print('Exhausted after {} attempts.'.format(attempts)
+                                                        , print_time=(not CommandBase.last_error_messages)
+                                                        )
             return None
         
         assert False # should never happen

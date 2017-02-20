@@ -52,7 +52,7 @@ def is_ojm_running(kill=False):
             else:
                 print('ojm.py is running on',login_nodes[login_node],'\n')
     if not result:
-        remote.err_print('ojm.py is not running on',current_cluster,'\n')
+        remote.err_print('ojm.py is not running on',current_cluster,'\n',print_time=False)
     print(title_line(width=100, char='-'))
     return result 
     #---------------------------------------------------------------------------
