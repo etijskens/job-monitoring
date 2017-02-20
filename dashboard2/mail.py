@@ -94,6 +94,5 @@ if __name__=='__main__':
 #     print(mail_adresses)
     
     print(address_of('vsc20170'))
-    print(address_of('vsc20170'))
     print_all()
     print('\n--finished--')

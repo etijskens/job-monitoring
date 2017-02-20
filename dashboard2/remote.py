@@ -8,7 +8,7 @@ Classes and functions
 """
 import paramiko,subprocess    
 import xmltodict
-import shlex,sys
+import shlex,sys,datetime
 from time import sleep
 
 import logindetails
@@ -16,10 +16,12 @@ from cfg import Cfg
 from cluster import current_cluster,cluster_properties
 
 #===============================================================================
-def err_print(*args,to_stderr=True):
+def err_print(*args,to_stderr=True,print_time=True):
     """
     Utility for printing to stderr, behaves more or less as built-in print().
     """
+    if print_time:
+        err_print(datetime.datetime.now(),to_stderr=to_stderr,print_time=False)
     s = '!!!'
     for arg in args:
         s+=' '
