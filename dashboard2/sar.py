@@ -28,9 +28,10 @@ def run_sar_P(compute_node,cores=None):
     :returns: list with the relevant output lines
     """
     command = "ssh {} sar -P ALL 1 1".format(compute_node)
-    lines = remote.run(command,post_processor=remote.list_of_lines)
+    lines = remote.run(command,attempts=2,post_processor=remote.list_of_lines)
     if lines is None:
         lines = ['command failed: '+command]
+        return lines
     # remove lines not containing 'Average:'
     lines_filtered = []
     for line in lines:
@@ -72,7 +73,12 @@ class Data_sar:
         self.compute_node = compute_node
         self.cores = cores
         self.data = run_sar_P( compute_node, cores )
-        
+        if self.data[0].startswith('command failed'):
+            self.data_cores = self.data
+            self.command_failed = True
+            return
+        else:
+            self.command_failed = False
         self.data_cores = [self.data[0]]
         for line in self.data[1:]:
             core = int(line.split()[0])

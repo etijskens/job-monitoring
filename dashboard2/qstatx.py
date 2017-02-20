@@ -11,7 +11,6 @@ import remote
 from cpus import ExecHost, str2gb
 from mycollections import OrderedDict, od_first
 from sar import Data_sar
-from remote import err_print
 #===============================================================================    
 def run_qstat_f(jobid):
     """
@@ -185,21 +184,25 @@ class Data_qstat:
             # find the load of these cores (sar)
             # can't avoid disturbing the compute node this time
             data_sar = Data_sar(compute_node,cores)
-            self.node_sar[compute_node] = data_sar       
+            self.node_sar[compute_node] = data_sar 
         if len(self.node_sar)==1:
             mhost_data_sar = od_first(self.node_sar)[1]
-            self.sar_effic = mhost_data_sar.columns['%user'][1]
+            if mhost_data_sar.command_failed:
+                self.sar_effic = 0
+            else:
+                self.sar_effic = mhost_data_sar.columns['%user'][1]
         else:
             # we still need to comput the all node average
             avgs = [self.get_ncores()]
             avgs.extend(6*[0])
             for data_sar in self.node_sar.values():
-                avgs[1] += data_sar.columns['%user'  ][0]
-                avgs[2] += data_sar.columns['%nice'  ][0]
-                avgs[3] += data_sar.columns['%system'][0]
-                avgs[4] += data_sar.columns['%iowait'][0]
-                avgs[5] += data_sar.columns['%steal' ][0]
-                avgs[6] += data_sar.columns['%idle'  ][0]
+                if not data_sar.command_failed:
+                    avgs[1] += data_sar.columns['%user'  ][0]
+                    avgs[2] += data_sar.columns['%nice'  ][0]
+                    avgs[3] += data_sar.columns['%system'][0]
+                    avgs[4] += data_sar.columns['%iowait'][0]
+                    avgs[5] += data_sar.columns['%steal' ][0]
+                    avgs[6] += data_sar.columns['%idle'  ][0]
             nnodes = self.get_nnodes()
             for i in range(1,7):
                 avgs[i]/=nnodes
