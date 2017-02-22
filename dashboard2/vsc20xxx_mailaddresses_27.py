@@ -32,9 +32,9 @@ except Exception, error:
 
 for i in range(1,args.n+1):
     vsc20xxx = 'vsc20%03d' % i
-    filter = '(cn=%s)' % vsc20xxx
+    _filter = '(cn=%s)' % vsc20xxx
     try:
-        result_id = ldap_server.search('dc=vscentrum,dc=be', ldap.SCOPE_SUBTREE,filter, ['mail'])
+        result_id = ldap_server.search('dc=vscentrum,dc=be', ldap.SCOPE_SUBTREE,_filter, ['mail'])
     except:
         print 'oops'
         continue

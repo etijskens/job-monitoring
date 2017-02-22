@@ -25,15 +25,15 @@ classes and functions
 """
 from PyQt4 import QtGui,QtCore,uic
 import sys,os,argparse,glob,shutil
-import pickle
 
 from mail import address_of
 from ignoresignals import IgnoreSignals
 import remote
 from titleline import title_line
 from mycollections import od_first, od_last
+import showq
 from cfg import Cfg
-from is_ojm_running import is_ojm_running
+# from is_ojm_running import is_ojm_running
 
 #===================================================================================================
 def completed_jobs_by_user(arg):
@@ -62,8 +62,7 @@ class JobHistory:
     """
     #---------------------------------------------------------------------------------------------------------         
     def __init__(self,filepath):
-        file = open(filepath,'rb')
-        self.job = pickle.load(file)
+        self.job = showq.unpickle(filepath)
         self.filepath = filepath
         self.timestamp_begin = []
         line = 1
@@ -179,7 +178,7 @@ class CompletedDashboard(QtGui.QMainWindow):
         """
         print('Retrieving reports of completed jobs ...')
         self.map_filename_job = {}
-        pattern = '*.pickled'
+        pattern = '*.pickled.gz'
         if self.analyze_offline_data:
             # list files that are already local
             filenames_local = glob.glob(os.path.join(self.local_folder,pattern))
@@ -192,7 +191,7 @@ class CompletedDashboard(QtGui.QMainWindow):
                     filenames_remote = remote.glob(pattern,remote_path)
                 except Exception as e:
                     if isinstance(e,remote.Stderr) \
-                    and 'ls: cannot access *.pickled: No such file or directory' in str(e):
+                    and 'ls: cannot access *.pickled.gz: No such file or directory' in str(e):
                         print('No new reports found.')
                     elif isinstance(e,remote.NotConnected):
                         print('Not connected, only previously downloaded reports are available.')
@@ -209,7 +208,8 @@ class CompletedDashboard(QtGui.QMainWindow):
                             
                             remote.copy_remote_to_local( local_filepath
                                                        , remote_filepath
-                                                       , rename=remote_filepath+'_done'
+                                                       , rename='' # remove the remote file.
+#                                                        , rename=remote_filepath+'_done'
                                                        )
                             print('copied')
                             filenames_local.append(os.path.join(self.local_folder,filename))
@@ -492,8 +492,8 @@ if __name__=='__main__':
     parser.add_argument('--folder','-f',action='store',type=str,default='')
     args = parser.parse_args()
     print('completed_dashboard.py: command line arguments:',args)
-    if args.offline:
-        is_ojm_running()
+#     if args.offline:
+#         is_ojm_running()
         
     finished = CompletedDashboard(offline = args.offline
                                  ,local_folder = args.folder

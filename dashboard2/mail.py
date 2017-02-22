@@ -66,12 +66,14 @@ def refresh_mail_addresses():
     script on a login-node.
     """
     # first copy the script to my remote home directory, so i have the most recent version of it.
-    python_script = 'vsc20xxx_mailaddresses.py' # python 2.7 script because ituses module ldap 
+    python_script = 'vsc20xxx_mailaddresses_27.py' # python 2.7 script because ituses module ldap 
     try:
         remote.copy_local_to_remote(python_script,python_script)
         command = pickle.load(open('config/retrieve_mail_addresses.pickled','rb'))
+        print(command)
         lines = remote.run(command,post_processor=remote.list_of_lines)
-    except:
+    except Exception as e:
+        print(type(e),e)
         lines = None
     if lines is None:
         return None
@@ -92,7 +94,7 @@ def refresh_mail_addresses():
 if __name__=='__main__':
 #     mail_adresses = loa_mail_addresses()
 #     print(mail_adresses)
-    
+    remote.connect_to_login_node()
     print(address_of('vsc20170'))
     print_all()
     print('\n--finished--')

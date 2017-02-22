@@ -12,7 +12,7 @@ import          rules
 from mycollections import OrderedDict,od_add_list_item,od_last
 from cluster    import current_cluster,cluster_properties
 
-import pickle,os,shutil
+import pickle,os,shutil,gzip
 from time       import sleep
 import datetime
 
@@ -160,6 +160,7 @@ class ShowqJobEntry:
         """
         remote.err_print('method showq.ShowqJobEntry.get_effic(self, ncores_used_on_mhost) may '
                          'report incorrect values. Use JobSample.get_effic() instead.'
+                        , print_time=False
                         ) 
         numerator   = self.data['@StatPSUtl']
         denominator = self.data['@StatPSDed']
@@ -322,12 +323,13 @@ class JobSample:
                 avgs = [self.get_ncores()]
                 avgs.extend(6*[0])
                 for data_sar in self.data_qstat.node_sar.values():
-                    avgs[1] += data_sar.columns['%user'  ][0]
-                    avgs[2] += data_sar.columns['%nice'  ][0]
-                    avgs[3] += data_sar.columns['%system'][0]
-                    avgs[4] += data_sar.columns['%iowait'][0]
-                    avgs[5] += data_sar.columns['%steal' ][0]
-                    avgs[6] += data_sar.columns['%idle'  ][0]
+                    if hasattr(data_sar,'columns'):
+                        avgs[1] += data_sar.columns['%user'  ][0]
+                        avgs[2] += data_sar.columns['%nice'  ][0]
+                        avgs[3] += data_sar.columns['%system'][0]
+                        avgs[4] += data_sar.columns['%iowait'][0]
+                        avgs[5] += data_sar.columns['%steal' ][0]
+                        avgs[6] += data_sar.columns['%idle'  ][0]
                 nnodes = self.get_nnodes()
                 for i in range(1,7):
                     avgs[i]/=nnodes
@@ -701,52 +703,86 @@ class Job:
         sample = self.get_sample(timestamp)
         return sample.get_mem()
     #---------------------------------------------------------------------------
-    def pickle(self,prefix,only_if_warnings=True,verbose=False):
+    def pickle(self,prefix,only_if_warnings=True,verbose=False,compressed=True):
         """
-        Pickle this job.
+        Pickle this job and compress it using gzip.
         
         :param str prefix: the receiving directory.
         :param bool only_if_warnings: do only pickle if the job has warnings.
         :param bool verbose: if *True*, print the destination file. 
+        :param bool compressed: compress after pickling.  
         """
         if (only_if_warnings and self.nsamples_with_warnings) \
         or (not only_if_warnings): 
+            #pickle
             if 'running' in prefix:
                 fname = '{}_{}.pickled'   .format(self.username,self.jobid)
             else:
                 fname = '{}_{}_{}.pickled'.format(self.username,self.jobid,self.timestamps()[-1])
-            fpath = os.path.join(prefix,fname)
-            with open(fpath,'wb') as f:
-                pickle.dump(self,f)
-                if verbose:
-                    print(' (pickled {})'.format(fpath))
+            
+            if compressed:
+                fpath = os.path.join(prefix,fname+'.gz')
+                fo = gzip.open(fpath,'wb') 
+            else:
+                fo =      open(fpath,'wb')                
+            # remove the "upward" object references in the data tree
+            # otherwise they waste a lot of disk space 
+            self.sampler = None
+            # job_sample.parent_job
+            for job_sample in self.samples.values():
+                job_sample.parent_job = None                
+
+            pickle.dump(self,fo)
+            if verbose:
+                print(' (pickled {})'.format(fpath))
+            fo.close()
     #---------------------------------------------------------------------------
+
 #===============================================================================   
-def unpickle(prefix,username,jobid,timestamp='',verbose=False):
+def unpickle(fpath,sampler=None,verbose=False):
     """
     Counterpart of Job.pickle()
     
-    :param str prefix: source directory 
-    :param str username: the username of the Job
-    :param str jobid: jobid of the job.
-    :param str timestamp: last sampling timestamp of the job.
+    :param str fpath: path to pickled file. If ending on '.pickled.gz', unzips before unpickling. If ending on '.pickled', unpickle without unzipping. Otherwise try both in that order.   
+    :param Sampler sampler: :class:`Sampler` object or :class:`None`.
     :param bool verbose: print the filename of the unpickled file.
-    :return: a Job object.
-    """
-#     :returns: the Job object that was pickled, or None if inexisting.
-    if 'running' in prefix:
-        fname = '{}_{}.pickled'   .format(username,jobid)
+    :return: a Job object or :class:`None` if the file does not exist.
+    """        
+    if fpath.endswith('.pickled.gz'):
+        try:
+            with gzip.open(fpath,'rb') as fo:
+                job = pickle.load(fo)
+        except:
+            job = None
+                    
+    elif fpath.endswith('.pickled'):
+        try:
+            with open(fpath,'rb') as fo:
+                job = pickle.load(fo)
+        except:
+            job = None
     else:
-        fname = '{}_{}_{}.pickled'.format(username,jobid,timestamp)
-    fpath = os.path.join(prefix,fname)
-    if os.path.exists(fpath):
-        job = pickle.load( open(fpath,'rb') )
-        if verbose:
-            print(' (unpickled {})\n'.format(fpath))
-    else:
-        job = None
+        _fpath = fpath+'.pickled.gz'
+        if os.path.exists(_fpath):
+            return unpickle(_fpath, sampler=sampler, verbose=verbose)
+        else:
+            _fpath = fpath+'.pickled'
+            if os.path.exists(_fpath):
+                return unpickle(_fpath, sampler=sampler, verbose=verbose)
+            else:
+                job = None
+    if job is None:
         if verbose:
             print(' (not found {})\n'.format(fpath))
+    else:
+        if verbose:
+            print(' (unpickled {})\n'.format(fpath))
+        # Set the "upward" object references in the data tree
+        # otherwise they refer to their version at the moment of pickling
+        job.sampler = sampler
+        # job_sample.parent_job
+        for job_sample in job.samples.values():
+            job_sample.parent_job = job                
     return job
 #===============================================================================   
 class Sampler:
@@ -875,15 +911,8 @@ class Sampler:
             if not jobid in self.jobs:
                 # this job is encountered for the first time
                 # or this is a restart and the job was pickled 
-                job =  unpickle('running', username, jobid, verbose=verbose)
+                job =  unpickle( os.path.join('running', username+'_'+jobid), sampler=self, verbose=verbose )
                 if job:
-                    # correct the "upward" object references in the data tree
-                    # otherwise they refer to their version at the moment of pickling
-                    # job.sampler
-                    job.sampler = self
-                    # job_sample.parent_job
-                    for job_sample in job.samples.values():
-                        job_sample.parent_job = job
                     job.add_sample(job_entry,timestamp)
                 else:
                     # this job is really encountered for the first time
@@ -996,7 +1025,7 @@ class Sampler:
             if timestamp==self.timestamps[-1]:
                 return # this timestamp is already in the samples
         self.timestamps.append(timestamp)
-        filenames = remote.glob('*.pickled','data/jobmonitor/running/')
+        filenames = remote.glob('*.pickled.gz','data/jobmonitor/running/')
         self.n_entries = 0
         for filename in filenames:
             if not filename: # empty line
@@ -1010,7 +1039,7 @@ class Sampler:
             except:
                 print(' - failed')
                 continue
-            job = pickle.load(open('offline/running/'+filename,'rb'))
+            job = unpickle('offline/running/'+filename,sampler=self)
             self.add_offline_job(job)
             self.n_entries += 1
         self.overviews[timestamp] = self.overview_list2str(self.overviews[timestamp])

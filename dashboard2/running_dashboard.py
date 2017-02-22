@@ -350,8 +350,8 @@ if __name__=='__main__':
     args = parser.parse_args()
     print('running_dashboard.py: command line arguments:',args)
     
-    if args.offline:
-        is_ojm_running()
+#     if args.offline:
+#         is_ojm_running()
         
     Cfg.sampling_interval = args.interval
     dashboard = RunningDashboard( offline =     args.offline

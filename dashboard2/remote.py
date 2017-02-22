@@ -424,7 +424,7 @@ def copy_remote_to_local(local_destination,remote_source,rename=False):
         if rename:
             command = 'mv {} {}'.format(remote_source,rename)
         else:
-            command = 'rm -f '+rename
+            command = 'rm -f '+remote_source
         cmd = RemoteCommand(command)
         cmd.execute()
     else:
