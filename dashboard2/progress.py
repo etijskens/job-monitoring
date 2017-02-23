@@ -10,7 +10,7 @@ from datetime import datetime
 #==================================================================================================
 def printProgress(iteration, total, prefix = 'Progress: ', suffix = '', decimals = 1, barLength = 50):
     """
-    Call this method in a loop to print a progress bar in a terminal. Depending on how the '\r' 
+    Call this method in a loop to print a progress bar in a terminal. Depending on how the *'\\\\r'* 
     character is interpreted the progress bar is printed on the same line (terminal, iterm) or 
     on a newline (eclipes terminal, file)
     

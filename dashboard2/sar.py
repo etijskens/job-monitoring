@@ -58,8 +58,8 @@ class Data_sar:
     """
     Class for storing and manipulating the output of :func:`run_sar_P` on a compute node.
     The constructor arguments are the same as for :func:`run_sar_P`.
-    The output lines are transformed into an OrderedDict *self.columns* of column headers
-     ('cpu', '%user', '%system', '%iowait', '%steal', '%idle') and column data.
+    The output lines are transformed into an OrderedDict, *self.columns*, of column headers
+    ('cpu', '%user', '%system', '%iowait', '%steal', '%idle') and column data.
     For each column the average over de selected cores is computed and added as the
     first line after the header line.
     
