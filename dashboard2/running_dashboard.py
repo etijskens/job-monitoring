@@ -80,7 +80,7 @@ class RunningDashboard(QtGui.QMainWindow):
         """
         self.previous_block = 0
         if self.analyze_offline_data:
-            self.sampler.sample_offline()
+            self.sampler.fetch_offline_samples()
         else:
             self.sampler.sample()
         timestamp = self.sampler.timestamps[-1] 

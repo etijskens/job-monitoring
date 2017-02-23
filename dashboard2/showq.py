@@ -794,7 +794,7 @@ def unpickle(fpath,sampler=None,verbose=False):
 #===============================================================================   
 class Sampler:
     """
-    Class that does the sampling, either through :func:`sample` or :func:`sample_offline`.
+    Class that does the sampling, either through :func:`sample` or :func:`fetch_offline_samples`.
     The frequency of sampling is determined by the caller.
         
     :param int interval: number of seconds between successive samples.
@@ -1013,7 +1013,7 @@ class Sampler:
         except:
             return ''
     #---------------------------------------------------------------------------
-    def sample_offline(self):
+    def fetch_offline_samples(self):
         """
         Sample the running jobs from the offline job monitor. The remote directory '~/data/jobmonitor/running'
         examined to see if there are new samples available. These are copied to the local directory ./offline/running
@@ -1092,7 +1092,7 @@ class Sampler:
                             line += '\n'
                         overview.append(line)
                 overview.append(overview_line)   
-        self.total_nodes_in_use = job.sampler.total_nodes_in_use             
+        self.total_nodes_in_use = job.sampler.get_total_nodes_in_use()
     #---------------------------------------------------------------------------
     def when_done_adding_offline_jobs(self):
         """

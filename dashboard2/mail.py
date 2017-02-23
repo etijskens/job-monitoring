@@ -70,7 +70,7 @@ def refresh_mail_addresses():
     try:
         remote.copy_local_to_remote(python_script,python_script)
         command = pickle.load(open('config/retrieve_mail_addresses.pickled','rb'))
-        print(command)
+#         print(command)
         lines = remote.run(command,post_processor=remote.list_of_lines)
     except Exception as e:
         print(type(e),e)
