@@ -664,9 +664,9 @@ class Job:
     #---------------------------------------------------------------------------
     def remove_file(self):
         """
-        Remove the *.pickled* file corresponding to this Job.
+        Remove the *.pickled.gz* file corresponding to this Job.
         """
-        fname = 'running/{}_{}.pickled'.format(self.username,self.jobid)
+        fname = 'running/{}_{}.pickled.gz'.format(self.username,self.jobid)
         try:
             os.remove(fname)
         except:
@@ -726,13 +726,20 @@ class Job:
             else:
                 fo =      open(fpath,'wb')                
             # remove the "upward" object references in the data tree
-            # otherwise they waste a lot of disk space 
+            # otherwise they waste a lot of disk space
+            sampler = self.sampler 
             self.sampler = None
             # job_sample.parent_job
             for job_sample in self.samples.values():
-                job_sample.parent_job = None                
-
+                job_sample.parent_job = None
+            # pickle this job                
             pickle.dump(self,fo)
+            # finally restore the upward references
+            self.sampler = sampler
+            # job_sample.parent_job
+            for job_sample in self.samples.values():
+                job_sample.parent_job = self
+            
             if verbose:
                 print(' (pickled {})'.format(fpath))
             fo.close()
@@ -896,7 +903,7 @@ class Sampler:
             if job_entry.get_state() != 'Running':
                 continue # we only analyze running jobs
             jobid    = job_entry.get_jobid()
-            username = job_entry.get_username()
+            #username = job_entry.get_username()
             od_add_list_item(self.timestamp_jobs,timestamp,jobid)
                         
             if self.qMainWindow:
@@ -908,19 +915,16 @@ class Sampler:
                 if show_progress:                
                     printProgress(i_entry, self.n_entries, prefix=hdr, suffix='jobid='+jobid, decimals=-1)
                 
-            if not jobid in self.jobs:
+            job = self.jobs.get(jobid,None)
+            if job is None:
                 # this job is encountered for the first time
-                # or this is a restart and the job was pickled 
-                job =  unpickle( os.path.join('running', username+'_'+jobid), sampler=self, verbose=verbose )
-                if job:
-                    job.add_sample(job_entry,timestamp)
-                else:
-                    # this job is really encountered for the first time
-                    job = Job(timestamp,job_entry,self)
+                job = Job(timestamp,job_entry,self)
                 self.jobs[jobid] = job 
             else:
-                job = self.jobs[jobid]
                 job.add_sample(job_entry,timestamp)
+                if job.sampler is None:
+                    remote.err_print('### strange')
+                    job.sampler = self
         
         if self.qMainWindow:
             # terminate QProgressDialog

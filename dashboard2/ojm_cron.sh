@@ -13,7 +13,4 @@ if [ ! -f ojm_cron.pickled ]; then
 fi
 #which python >> ojm_cron.out
 
-START=$(date)
 python ojm_cron.py 2>> ojm_cron.err 1>> ojm_cron.out
-STOP=$(date)
-echo ${START} './ojm_cron.sh' ${STOP} >> ojm_cron.log

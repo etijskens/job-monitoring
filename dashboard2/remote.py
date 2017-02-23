@@ -21,7 +21,8 @@ def err_print(*args,to_stderr=True,print_time=True):
     Utility for printing to stderr, behaves more or less as built-in print().
     """
     if print_time:
-        s = err_print('\n',datetime.datetime.now(),to_stderr=False,print_time=False)
+        s = err_print(datetime.datetime.now(),to_stderr=False,print_time=False)
+        s = '\n'+s
     else:
         s = ''
     s += '!!!'

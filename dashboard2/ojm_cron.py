@@ -24,12 +24,14 @@ from titleline  import title_line
 
 #===============================================================================
 if __name__=="__main__":
+    start = datetime.datetime.now()
+    
     parser = argparse.ArgumentParser('ojm')
     parser.add_argument('--show_progress','-s',action='store_true')
     args = parser.parse_args()
 #     print('ojm.py: command line arguments:',args)
     
-    print(title_line('off-line job monitor cron job started  : {}'.format(datetime.datetime.now()),char='=',width=100,above=True))
+    print(title_line('off-line job monitor cron job started  : {}'.format(start),char='=',width=100,above=True))
     if os.path.exists('ojm_cron.pickled.gz'):
         print('Loading ojm_cron.pickled.gz ...',end='')
         fo = gzip.open('ojm_cron.pickled.gz','rb')
@@ -48,8 +50,8 @@ if __name__=="__main__":
     with gzip.open('ojm_cron.pickled.gz','wb') as fo:
         pickle.dump(sampler,fo)
 
-    
-    print(title_line('off-line job monitor cron job completed: {}'.format(datetime.datetime.now()),char='=',width=100,below=True))
+    duration = datetime.datetime.now()-start
+    print(title_line('off-line job monitor cron job completed in {}s'.format(duration.seconds),char='=',width=100,below=True))
     
     
 
