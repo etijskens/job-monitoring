@@ -305,7 +305,7 @@ class CompletedDashboard(QtGui.QMainWindow):
         filename = overview_line.split(' ',1)[0]
         self.show_details(filename)
     #---------------------------------------------------------------------------------------------------------
-    def overview_move_cursor_to(self,lineno):
+    def overview_move_cursor_to(self,lineno,ignore=True):
         """
         Move the cursor in the overview to line *lineno*.
         """
@@ -317,8 +317,11 @@ class CompletedDashboard(QtGui.QMainWindow):
             
         cursor.select(QtGui.QTextCursor.LineUnderCursor)
         self.overview_lineno = lineno
-        with IgnoreSignals(self):
-            self.ui.qwOverview.setTextCursor(cursor)                    
+        if ignore:
+            with IgnoreSignals(self):
+                self.ui.qwOverview.setTextCursor(cursor)
+        else:                    
+            self.ui.qwOverview.setTextCursor(cursor)
     #---------------------------------------------------------------------------------------------------------
     def append_to_overview_line(self,filename,s):
         """
@@ -454,6 +457,7 @@ class CompletedDashboard(QtGui.QMainWindow):
         We will probably never look at it again  
         """
         self.archive_current_job('non_issues')
+        self.overview_move_cursor_to(1,ignore=False)
     #---------------------------------------------------------------------------------------------------------
     def on_qwArchiveToIssues_pressed(self):
         """
@@ -461,6 +465,7 @@ class CompletedDashboard(QtGui.QMainWindow):
         We might revisit this one to study the problem further or to follow up on this user/type of job.   
         """
         self.archive_current_job('issues')
+        self.overview_move_cursor_to(1,ignore=False)
     #---------------------------------------------------------------------------------------------------------
     def archive_current_job(self,archive):
         """
