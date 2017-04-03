@@ -148,7 +148,10 @@ class UsingSwapSpaceRule(Rule):
                 warn = True
             s += '\n    {}: swap used: {}/{} GB = {}%'.format(node,round(result[0],2),round(result[1],2),round(result[2],2))
         if warn:
-            s = self.warning.format(round(swap_used,2),round(swap_avail,2),round(100*swap_used/swap_avail),2) + s
+            s = self.warning.format( round(swap_used               ,2)
+                                   , round(swap_avail              ,2)
+                                   , round(100*swap_used/swap_avail,2)
+                                   ) + s
             return s
         else:
             return ''

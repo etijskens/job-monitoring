@@ -165,10 +165,10 @@ class CompletedDashboard(QtGui.QMainWindow):
         self.timer.timeout.connect(self.get_completed_reports)
         self.timer.start()
         
-        ctrl_o = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+o'),self)
-        ctrl_n = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+n'),self)
+        ctrl_o = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+o'),self) # Ok -> non_issues
+        ctrl_i = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+i'),self) # -> Issues
         ctrl_o.activated.connect(self.on_qwArchiveToNonIssues_pressed) 
-        ctrl_n.activated.connect(self.on_qwArchiveToIssues_pressed) 
+        ctrl_i.activated.connect(self.on_qwArchiveToIssues_pressed) 
     #---------------------------------------------------------------------------------------------------------
     # qwOverview handling
     #---------------------------------------------------------------------------------------------------------
