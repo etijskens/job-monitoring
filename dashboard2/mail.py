@@ -65,11 +65,8 @@ def refresh_mail_addresses():
     Obtain an up to date dictionary of username and mail addresses. This is achieved by running a Python2.7
     script on a login-node.
     """
-    # first copy the script to my remote home directory, so i have the most recent version of it.
-    python_script = 'vsc20xxx_mailaddresses_27.py' # python 2.7 script because ituses module ldap 
     try:
-        remote.copy_local_to_remote(python_script,python_script)
-        command = pickle.load(open('config/retrieve_mail_addresses.pickled','rb'))
+        command = '$VSC_DATA/jobmonitor/vsc20xxx_mailaddresses.sh'
 #         print(command)
         lines = remote.run(command,post_processor=remote.list_of_lines)
     except Exception as e:
@@ -92,7 +89,7 @@ def refresh_mail_addresses():
 # test code below
 #===================================================================================================
 if __name__=='__main__':
-#     mail_adresses = loa_mail_addresses()
+#     mail_adresses = load_mail_addresses()
 #     print(mail_adresses)
     remote.connect_to_login_node()
     print(address_of('vsc20170'))
