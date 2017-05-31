@@ -67,7 +67,7 @@ def refresh_mail_addresses():
     """
     try:
         command = '$VSC_DATA/jobmonitor/vsc20xxx_mailaddresses.sh'
-#         print(command)
+        # this script loads an appropriate Python 3.x module and executes vsc20xxx_mailaddresses_36.py
         lines = remote.run(command,post_processor=remote.list_of_lines)
     except Exception as e:
         print(type(e),e)

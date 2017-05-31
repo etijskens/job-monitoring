@@ -1,4 +1,5 @@
 """ !!! Python script (v2.7) !!! 
+*** OBSOLETE : use vsc20xxx_mailaddresses_36.py instead. 
 
 This python script (v2.7) retrieves (username,mail_address) pairs from the ldap
 and prints a single pair per line.
